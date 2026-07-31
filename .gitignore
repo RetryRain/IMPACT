@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scrapy cache
+.scrapy/
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs
+logs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# SQLite
+*.sqlite3
+*.db
+
+# Exported data
+exports/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
+
+# 
+bytez/*.json
