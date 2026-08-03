@@ -51,7 +51,7 @@ class ToiSpider(scrapy.Spider):
     #    MAX_OLD_ARTICLE_RATIO, that scope stops expanding - this is meant
     #    to detect that the crawl has drifted from "top news" into
     #    stale/back-catalog content via related-article links.
-    OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=2)
+    OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=1)
     MAX_OLD_ARTICLE_RATIO: ClassVar[float] = 0.5
 
     # Don't apply the ratio check for a scope until at least this many
