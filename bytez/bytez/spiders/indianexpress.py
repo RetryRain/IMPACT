@@ -9,6 +9,13 @@ import scrapy
 from scrapy.selector import Selector
 
 from bytez.items import BytezItem
+from bytez.spiders.common import (
+    ScopeTracker,
+    SpiderLimits,
+    parse_spider_limits,
+    scope_errback,
+    utc_now_iso,
+)
 
 
 class IndianExpressSpider(scrapy.Spider):
@@ -35,7 +42,7 @@ class IndianExpressSpider(scrapy.Spider):
 
     PAGE_SIZE: ClassVar[int] = 8
     SOURCE: ClassVar[str] = "The New Indian Express"
-    LANGUAGE: ClassVar[str] = "English"
+    LANGUAGE: ClassVar[str] = "en"
     IMAGE_CDN_URL: ClassVar[str] = "https://d3lzcn6mbbadaf.cloudfront.net/"
     BROWSER_USER_AGENT: ClassVar[str] = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -44,12 +51,27 @@ class IndianExpressSpider(scrapy.Spider):
     )
     custom_settings: ClassVar[dict[str, str]] = {"USER_AGENT": BROWSER_USER_AGENT}
 
-    # Limits apply independently to each collection, matching the project's
-    # multi-scope crawl behavior in the Times of India spider.
     MAX_TOTAL_ARTICLES: ClassVar[int] = 1000
     OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=2)
     MAX_OLD_ARTICLE_RATIO: ClassVar[float] = 0.5
     MIN_ARTICLES_BEFORE_RATIO_CHECK: ClassVar[int] = 200
+
+    DEFAULT_LIMITS: ClassVar[SpiderLimits] = SpiderLimits(
+        max_total_articles=MAX_TOTAL_ARTICLES,
+        old_article_max_age=OLD_ARTICLE_MAX_AGE,
+        max_old_article_ratio=MAX_OLD_ARTICLE_RATIO,
+        min_articles_before_ratio_check=MIN_ARTICLES_BEFORE_RATIO_CHECK,
+    )
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super().from_crawler(crawler, *args, **kwargs)
+        spider.tracker = ScopeTracker(
+            spider.limits,
+            stats=crawler.stats,
+            logger=spider.logger,
+        )
+        return spider
 
     def __init__(
         self,
@@ -61,70 +83,18 @@ class IndianExpressSpider(scrapy.Spider):
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self.max_total_articles = self._positive_int(
-            max_total_articles, self.MAX_TOTAL_ARTICLES
+        self.limits = parse_spider_limits(
+            max_total_articles=max_total_articles,
+            old_article_max_age_days=old_article_max_age_days,
+            max_old_article_ratio=max_old_article_ratio,
+            min_articles_before_ratio_check=min_articles_before_ratio_check,
+            defaults=self.DEFAULT_LIMITS,
         )
-        self.old_article_max_age = timedelta(
-            days=self._positive_float(
-                old_article_max_age_days,
-                self.OLD_ARTICLE_MAX_AGE.total_seconds() / 86_400,
-            )
-        )
-        self.max_old_article_ratio = self._ratio(
-            max_old_article_ratio, self.MAX_OLD_ARTICLE_RATIO
-        )
-        self.min_articles_before_ratio_check = self._positive_int(
-            min_articles_before_ratio_check,
-            self.MIN_ARTICLES_BEFORE_RATIO_CHECK,
-            allow_zero=True,
-        )
-        self.total_articles: dict[str, int] = {}
-        self.old_articles: dict[str, int] = {}
-        self.stopped_scopes: dict[str, str] = {}
-
-    @staticmethod
-    def _positive_int(value: str | None, default: int, allow_zero: bool = False) -> int:
-        if value is None:
-            return default
-        try:
-            parsed = int(value)
-        except ValueError as error:
-            raise ValueError(f"Expected an integer, got {value!r}") from error
-        if parsed < 0 or (parsed == 0 and not allow_zero):
-            raise ValueError(f"Expected a positive integer, got {value!r}")
-        return parsed
-
-    @staticmethod
-    def _positive_float(value: str | None, default: float) -> float:
-        if value is None:
-            return default
-        try:
-            parsed = float(value)
-        except ValueError as error:
-            raise ValueError(f"Expected a positive number, got {value!r}") from error
-        if parsed <= 0:
-            raise ValueError(f"Expected a positive number, got {value!r}")
-        return parsed
-
-    @staticmethod
-    def _ratio(value: str | None, default: float) -> float:
-        if value is None:
-            return default
-        try:
-            parsed = float(value)
-        except ValueError as error:
-            raise ValueError(f"Expected a ratio, got {value!r}") from error
-        if not 0 <= parsed <= 1:
-            raise ValueError(f"Expected a ratio from 0 to 1, got {value!r}")
-        return parsed
-
-    def start_requests(self):
-        for scope, api_url in self.COLLECTION_URLS.items():
-            yield self._api_request(scope, api_url, offset=0)
+        self.tracker: ScopeTracker | None = None
 
     async def start(self) -> AsyncIterator[scrapy.Request]:
-        for request in self.start_requests():
-            yield request
+        for scope, api_url in self.COLLECTION_URLS.items():
+            yield self._api_request(scope, api_url, offset=0)
 
     def _api_request(self, scope: str, api_url: str, offset: int) -> scrapy.Request:
         query = urlencode(
@@ -133,6 +103,7 @@ class IndianExpressSpider(scrapy.Spider):
         return scrapy.Request(
             f"{api_url}?{query}",
             callback=self.parse,
+            errback=scope_errback(self, self.tracker, scope, self.SCOPES),
             cb_kwargs={"scope": scope, "api_url": api_url, "offset": offset},
         )
 
@@ -150,20 +121,13 @@ class IndianExpressSpider(scrapy.Spider):
             return None
 
     @staticmethod
-    def _parse_published_at(value: str | None) -> datetime | None:
-        if not value:
-            return None
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-
-    def _is_old(self, published_at: str | None) -> bool:
-        parsed = self._parse_published_at(published_at)
-        return (
-            parsed is not None
-            and (datetime.now(UTC) - parsed) > self.old_article_max_age
-        )
+    def _is_linked_story(metadata: object) -> bool:
+        if not isinstance(metadata, dict):
+            return False
+        if metadata.get("linked-story-id"):
+            return True
+        linked_story = metadata.get("linked-story")
+        return isinstance(linked_story, dict) and bool(linked_story)
 
     @staticmethod
     def _extract_body(cards: object) -> str:
@@ -183,16 +147,13 @@ class IndianExpressSpider(scrapy.Spider):
                     continue
 
                 metadata = element.get("metadata")
-                is_linked_story = isinstance(metadata, dict) and bool(
-                    metadata.get("linked-story-id")
-                )
                 if (
                     element.get("subtype") == "also-read"
                     or (
                         isinstance(metadata, dict)
                         and metadata.get("promotional-message")
                     )
-                    or is_linked_story
+                    or IndianExpressSpider._is_linked_story(metadata)
                 ):
                     continue
 
@@ -266,33 +227,8 @@ class IndianExpressSpider(scrapy.Spider):
             tags=tag_names,
             source=cls.SOURCE,
             language=cls.LANGUAGE,
-            scraped_at=datetime.now(UTC).replace(microsecond=0).isoformat(),
+            scraped_at=utc_now_iso(),
         )
-
-    def _register_article(self, scope: str, published_at: str | None) -> None:
-        self.total_articles[scope] = self.total_articles.get(scope, 0) + 1
-        if self._is_old(published_at):
-            self.old_articles[scope] = self.old_articles.get(scope, 0) + 1
-
-    def _should_stop(self, scope: str) -> str | None:
-        total = self.total_articles.get(scope, 0)
-        if total >= self.max_total_articles:
-            return f"reached max_total_articles={self.max_total_articles}"
-        if total >= self.min_articles_before_ratio_check:
-            old = self.old_articles.get(scope, 0)
-            ratio = old / total
-            if ratio > self.max_old_article_ratio:
-                return (
-                    f"old-article ratio {ratio:.2%} exceeded "
-                    f"max_old_article_ratio={self.max_old_article_ratio:.2%} "
-                    f"(old={old}, total={total})"
-                )
-        return None
-
-    def _stop_scope(self, scope: str, reason: str) -> None:
-        if scope not in self.stopped_scopes:
-            self.stopped_scopes[scope] = reason
-            self.logger.info("%s crawl finished: %s", scope, reason)
 
     def parse(
         self,
@@ -301,19 +237,21 @@ class IndianExpressSpider(scrapy.Spider):
         api_url: str,
         offset: int,
     ):
-        if scope in self.stopped_scopes:
+        if self.tracker.is_stopped(scope):
             return
 
         payload = response.json()
         items = payload.get("items", []) if isinstance(payload, dict) else []
         if not isinstance(items, list) or not items:
-            self._stop_scope(scope, "API returned no items")
+            self.tracker.handle_scope_stop(scope, "API returned no items", self.SCOPES)
             return
 
         for entry in items:
-            if self.total_articles.get(scope, 0) >= self.max_total_articles:
-                self._stop_scope(
-                    scope, self._should_stop(scope) or "article limit reached"
+            if self.tracker.total_articles.get(scope, 0) >= self.limits.max_total_articles:
+                self.tracker.handle_scope_stop(
+                    scope,
+                    self.tracker.should_stop(scope) or "article limit reached",
+                    self.SCOPES,
                 )
                 break
 
@@ -327,27 +265,17 @@ class IndianExpressSpider(scrapy.Spider):
                 self.logger.warning("[%s] skipping story without a URL", scope)
                 continue
 
-            self._register_article(scope, item.published_at)
+            self.tracker.register(scope, item.published_at)
             yield item
 
-            stop_reason = self._should_stop(scope)
+            stop_reason = self.tracker.should_stop(scope)
             if stop_reason:
-                self._stop_scope(scope, stop_reason)
+                self.tracker.handle_scope_stop(scope, stop_reason, self.SCOPES)
                 break
 
-        if scope not in self.stopped_scopes:
+        if not self.tracker.is_stopped(scope):
             yield self._api_request(scope, api_url, offset + self.PAGE_SIZE)
 
     def closed(self, reason: str) -> None:
         for scope in self.SCOPES:
-            total = self.total_articles.get(scope, 0)
-            old = self.old_articles.get(scope, 0)
-            ratio = old / total if total else 0.0
-            self.logger.info(
-                "[%s] articles=%d old=%d old_ratio=%.2f%% stop_reason=%s",
-                scope,
-                total,
-                old,
-                ratio * 100,
-                self.stopped_scopes.get(scope, reason),
-            )
+            self.tracker.log_scope_summary(scope, reason)

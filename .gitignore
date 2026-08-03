@@ -33,7 +33,8 @@ dist/
 logs/
 
 # Test / coverage
-/bytez/tests/
+bytez/tests/__pycache__/
+bytez/tests/.pytest_cache/
 .pytest_cache/
 .coverage
 htmlcov/

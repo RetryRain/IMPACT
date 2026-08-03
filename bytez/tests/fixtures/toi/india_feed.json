@@ -1,0 +1,11 @@
+[
+  {
+    "hl": "Feed headline",
+    "des": "Feed summary",
+    "wu": "https://timesofindia.indiatimes.com/india/sample/articleshow/123456.cms"
+  },
+  {
+    "hl": "Video item",
+    "wu": "https://timesofindia.indiatimes.com/videos/sample/123.cms"
+  }
+]

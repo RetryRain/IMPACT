@@ -1,0 +1,47 @@
+{
+  "items": [
+    {
+      "story": {
+        "headline": "Sample headline",
+        "url": "https://www.newindianexpress.com/nation/sample-story-12345.html",
+        "author-name": "Jane Doe",
+        "subheadline": "A short summary",
+        "published-at": 1704067200000,
+        "hero-image-metadata": {
+          "original-url": "https://images.example.com/hero.jpg"
+        },
+        "sections": [{"display-name": "India"}],
+        "tags": [{"name": "Politics"}],
+        "cards": [
+          {
+            "story-elements": [
+              {
+                "type": "text",
+                "text": "<p>First paragraph with <strong>bold</strong> text.</p>"
+              },
+              {
+                "type": "text",
+                "subtype": "also-read",
+                "text": "<p>Also read this story.</p>"
+              },
+              {
+                "type": "text",
+                "metadata": {"promotional-message": true},
+                "text": "<p>Promo block.</p>"
+              },
+              {
+                "type": "text",
+                "metadata": {"linked-story-id": "abc123"},
+                "text": "<p>Linked story teaser.</p>"
+              },
+              {
+                "type": "text",
+                "text": "<p>Second paragraph.</p>"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
