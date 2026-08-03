@@ -24,7 +24,7 @@ class BytezPipeline:
             )
         )
 
-    def process_item(self, item, spider):
+    def process_item(self, item):
         adapter = ItemAdapter(item)
 
         # Drop duplicate articles
@@ -38,17 +38,24 @@ class BytezPipeline:
             self.seen_urls.add(normalized_url)
             adapter["url"] = normalized_url
 
-        # Clean whitespace
+        # Clean whitespace without flattening article paragraph breaks.
         for field in (
             "title",
             "summary",
-            "body",
             "author",
             "scope",
         ):
             value = adapter.get(field)
             if isinstance(value, str):
                 adapter[field] = " ".join(value.split())
+
+        body = adapter.get("body")
+        if isinstance(body, str):
+            adapter["body"] = "\n".join(
+                " ".join(paragraph.split())
+                for paragraph in body.splitlines()
+                if paragraph.strip()
+            )
 
         # Remove duplicate/empty tags
         tags = adapter.get("tags")
