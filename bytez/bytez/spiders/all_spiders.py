@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import scrapy
 
+from bytez.spiders.common import parse_spider_limits
 from bytez.spiders.hindu import HinduSpider
 from bytez.spiders.indianexpress import IndianExpressSpider
 from bytez.spiders.toi import ToiSpider
@@ -39,6 +40,26 @@ class AllSpidersSpider(scrapy.Spider):
 
     custom_settings: ClassVar[dict[str, str]] = IndianExpressSpider.custom_settings
 
+    def __init__(
+        self,
+        *args: Any,
+        max_total_articles: str | None = None,
+        old_article_max_age_days: str | None = None,
+        max_old_article_ratio: str | None = None,
+        min_articles_before_ratio_check: str | None = None,
+        max_published_age_hours: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.limits = parse_spider_limits(
+            max_total_articles=max_total_articles,
+            old_article_max_age_days=old_article_max_age_days,
+            max_old_article_ratio=max_old_article_ratio,
+            min_articles_before_ratio_check=min_articles_before_ratio_check,
+            max_published_age_hours=max_published_age_hours,
+            defaults=IndianExpressSpider.DEFAULT_LIMITS,
+        )
+
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super().from_crawler(crawler, *args, **kwargs)
@@ -61,7 +82,7 @@ class AllSpidersSpider(scrapy.Spider):
             child.closed(reason)
             tracker = getattr(child, "tracker", None)
             if tracker is not None:
-                total_articles += sum(tracker.total_articles.values())
+                total_articles += sum(tracker.fresh_articles.values())
 
         self.logger.info(
             "all_spiders crawl finished: reason=%s total_articles=%d",

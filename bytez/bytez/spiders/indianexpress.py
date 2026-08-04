@@ -53,15 +53,17 @@ class IndianExpressSpider(scrapy.Spider):
     custom_settings: ClassVar[dict[str, str]] = {"USER_AGENT": BROWSER_USER_AGENT}
 
     MAX_TOTAL_ARTICLES: ClassVar[int] = 1000
-    OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=2)
+    OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=1)
     MAX_OLD_ARTICLE_RATIO: ClassVar[float] = 0.5
     MIN_ARTICLES_BEFORE_RATIO_CHECK: ClassVar[int] = 200
+    MAX_PUBLISHED_AGE_HOURS: ClassVar[int] = 24
 
     DEFAULT_LIMITS: ClassVar[SpiderLimits] = SpiderLimits(
         max_total_articles=MAX_TOTAL_ARTICLES,
         old_article_max_age=OLD_ARTICLE_MAX_AGE,
         max_old_article_ratio=MAX_OLD_ARTICLE_RATIO,
         min_articles_before_ratio_check=MIN_ARTICLES_BEFORE_RATIO_CHECK,
+        max_published_age_hours=MAX_PUBLISHED_AGE_HOURS,
     )
 
     @classmethod
@@ -85,6 +87,7 @@ class IndianExpressSpider(scrapy.Spider):
         old_article_max_age_days: str | None = None,
         max_old_article_ratio: str | None = None,
         min_articles_before_ratio_check: str | None = None,
+        max_published_age_hours: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -93,6 +96,7 @@ class IndianExpressSpider(scrapy.Spider):
             old_article_max_age_days=old_article_max_age_days,
             max_old_article_ratio=max_old_article_ratio,
             min_articles_before_ratio_check=min_articles_before_ratio_check,
+            max_published_age_hours=max_published_age_hours,
             defaults=self.DEFAULT_LIMITS,
         )
         self.tracker: ScopeTracker | None = None
@@ -252,8 +256,10 @@ class IndianExpressSpider(scrapy.Spider):
             self.tracker.handle_scope_stop(scope, "API returned no items", self.SCOPES)
             return
 
+        page_had_fresh = False
+
         for entry in items:
-            if self.tracker.total_articles.get(scope, 0) >= self.limits.max_total_articles:
+            if self.tracker.fresh_articles.get(scope, 0) >= self.limits.max_total_articles:
                 self.tracker.handle_scope_stop(
                     scope,
                     self.tracker.should_stop(scope) or "article limit reached",
@@ -271,16 +277,25 @@ class IndianExpressSpider(scrapy.Spider):
                 self.logger.warning("[%s] skipping story without a URL", scope)
                 continue
 
-            self.tracker.register(scope, item.published_at)
-            yield item
+            if self.tracker.evaluate(scope, item.published_at):
+                yield item
+                page_had_fresh = True
 
             stop_reason = self.tracker.should_stop(scope)
             if stop_reason:
                 self.tracker.handle_scope_stop(scope, stop_reason, self.SCOPES)
                 break
 
-        if not self.tracker.is_stopped(scope):
-            yield self._api_request(scope, api_url, offset + self.PAGE_SIZE)
+        if self.tracker.is_stopped(scope):
+            return
+
+        if items and not page_had_fresh:
+            self.tracker.handle_scope_stop(
+                scope, "pagination reached stale content", self.SCOPES
+            )
+            return
+
+        yield self._api_request(scope, api_url, offset + self.PAGE_SIZE)
 
     def closed(self, reason: str) -> None:
         for scope in self.SCOPES:

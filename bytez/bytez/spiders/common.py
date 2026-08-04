@@ -18,6 +18,7 @@ class SpiderLimits:
     old_article_max_age: timedelta
     max_old_article_ratio: float
     min_articles_before_ratio_check: int
+    max_published_age_hours: int
 
 
 def _positive_int(value: str | None, default: int, allow_zero: bool = False) -> int:
@@ -62,6 +63,7 @@ def parse_spider_limits(
     old_article_max_age_days: str | None,
     max_old_article_ratio: str | None,
     min_articles_before_ratio_check: str | None,
+    max_published_age_hours: str | None = None,
     defaults: SpiderLimits,
 ) -> SpiderLimits:
     return SpiderLimits(
@@ -80,6 +82,11 @@ def parse_spider_limits(
         min_articles_before_ratio_check=_positive_int(
             min_articles_before_ratio_check,
             defaults.min_articles_before_ratio_check,
+            allow_zero=True,
+        ),
+        max_published_age_hours=_positive_int(
+            max_published_age_hours,
+            defaults.max_published_age_hours,
             allow_zero=True,
         ),
     )
@@ -119,6 +126,17 @@ def is_old_article(
     return (datetime.now(UTC) - parsed) > max_age
 
 
+def is_within_published_window(
+    published_at: str | None, *, max_age: timedelta
+) -> bool:
+    parsed = parse_iso_timestamp(published_at)
+    if parsed is None:
+        return False
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - parsed) <= max_age
+
+
 def bounded_links(
     links: Iterable[str],
     cap: int,
@@ -153,6 +171,9 @@ class ScopeTracker:
         self.close_on_all_scopes = close_on_all_scopes
         self.scope_prefix = scope_prefix
         self.stopped_scope_sink = stopped_scope_sink
+        self.fresh_articles: dict[str, int] = {}
+        self.stale_articles: dict[str, int] = {}
+        self.unknown_articles: dict[str, int] = {}
         self.total_articles: dict[str, int] = {}
         self.old_articles: dict[str, int] = {}
         self.stopped_scopes: dict[str, str] = {}
@@ -165,28 +186,81 @@ class ScopeTracker:
     def is_stopped(self, scope: str) -> bool:
         return scope in self.stopped_scopes
 
-    def register(self, scope: str, published_at: str | None) -> None:
-        self.total_articles[scope] = self.total_articles.get(scope, 0) + 1
+    def encounters(self, scope: str) -> int:
+        return (
+            self.fresh_articles.get(scope, 0)
+            + self.stale_articles.get(scope, 0)
+            + self.unknown_articles.get(scope, 0)
+        )
+
+    def evaluate(self, scope: str, published_at: str | None) -> bool:
+        if self.limits.max_published_age_hours == 0:
+            return self._evaluate_legacy(scope, published_at)
+
+        max_age = timedelta(hours=self.limits.max_published_age_hours)
+        if is_within_published_window(published_at, max_age=max_age):
+            self.fresh_articles[scope] = self.fresh_articles.get(scope, 0) + 1
+            self.total_articles[scope] = self.fresh_articles[scope]
+            if self.stats is not None:
+                self.stats.inc_value(f"scope/{scope}/items")
+                self.stats.inc_value(f"scope/{scope}/fresh_items")
+            return True
+
+        if parse_iso_timestamp(published_at) is None:
+            self.unknown_articles[scope] = self.unknown_articles.get(scope, 0) + 1
+            if self.stats is not None:
+                self.stats.inc_value(f"scope/{scope}/unknown_date_items")
+            return False
+
+        self.stale_articles[scope] = self.stale_articles.get(scope, 0) + 1
+        if self.stats is not None:
+            self.stats.inc_value(f"scope/{scope}/stale_items")
+        return False
+
+    def _evaluate_legacy(self, scope: str, published_at: str | None) -> bool:
+        self.fresh_articles[scope] = self.fresh_articles.get(scope, 0) + 1
+        self.total_articles[scope] = self.fresh_articles[scope]
         if self.stats is not None:
             self.stats.inc_value(f"scope/{scope}/items")
+            self.stats.inc_value(f"scope/{scope}/fresh_items")
 
         if is_old_article(published_at, max_age=self.limits.old_article_max_age):
             self.old_articles[scope] = self.old_articles.get(scope, 0) + 1
             if self.stats is not None:
                 self.stats.inc_value(f"scope/{scope}/old_items")
+        return True
+
+    def register(self, scope: str, published_at: str | None) -> None:
+        self.evaluate(scope, published_at)
 
     def should_stop(self, scope: str) -> str | None:
-        total = self.total_articles.get(scope, 0)
-        if total >= self.limits.max_total_articles:
+        fresh = self.fresh_articles.get(scope, 0)
+        if fresh >= self.limits.max_total_articles:
             return f"reached max_total_articles={self.limits.max_total_articles}"
-        if total >= self.limits.min_articles_before_ratio_check:
-            old = self.old_articles.get(scope, 0)
-            ratio = old / total
+
+        if self.limits.max_published_age_hours == 0:
+            total = self.fresh_articles.get(scope, 0)
+            if total >= self.limits.min_articles_before_ratio_check:
+                old = self.old_articles.get(scope, 0)
+                ratio = old / total
+                if ratio > self.limits.max_old_article_ratio:
+                    return (
+                        f"old-article ratio {ratio:.2%} exceeded "
+                        f"max_old_article_ratio={self.limits.max_old_article_ratio:.2%} "
+                        f"(old={old}, total={total})"
+                    )
+            return None
+
+        encounters = self.encounters(scope)
+        if encounters >= self.limits.min_articles_before_ratio_check:
+            stale = self.stale_articles.get(scope, 0)
+            unknown = self.unknown_articles.get(scope, 0)
+            ratio = (stale + unknown) / encounters
             if ratio > self.limits.max_old_article_ratio:
                 return (
-                    f"old-article ratio {ratio:.2%} exceeded "
+                    f"stale-article ratio {ratio:.2%} exceeded "
                     f"max_old_article_ratio={self.limits.max_old_article_ratio:.2%} "
-                    f"(old={old}, total={total})"
+                    f"(stale={stale}, unknown={unknown}, encounters={encounters})"
                 )
         return None
 
@@ -219,15 +293,18 @@ class ScopeTracker:
     def log_scope_summary(self, scope: str, fallback_reason: str) -> None:
         if self.logger is None:
             return
-        total = self.total_articles.get(scope, 0)
-        old = self.old_articles.get(scope, 0)
-        ratio = old / total if total else 0.0
+        fresh = self.fresh_articles.get(scope, 0)
+        stale = self.stale_articles.get(scope, 0)
+        unknown = self.unknown_articles.get(scope, 0)
+        encounters = fresh + stale + unknown
+        stale_ratio = (stale + unknown) / encounters if encounters else 0.0
         self.logger.info(
-            "[%s] articles=%d old=%d old_ratio=%.2f%% stop_reason=%s",
+            "[%s] fresh=%d stale=%d unknown=%d stale_ratio=%.2f%% stop_reason=%s",
             scope,
-            total,
-            old,
-            ratio * 100,
+            fresh,
+            stale,
+            unknown,
+            stale_ratio * 100,
             self.stopped_scopes.get(scope, fallback_reason),
         )
 

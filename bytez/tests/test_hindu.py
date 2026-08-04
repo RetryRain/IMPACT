@@ -91,6 +91,7 @@ class TestHinduSpider:
         spider = make_spider(
             max_total_articles="1",
             min_articles_before_ratio_check="0",
+            max_published_age_hours="0",
         )
         response = make_html_response(
             "https://www.thehindu.com/news/national/article.ece",

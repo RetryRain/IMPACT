@@ -51,12 +51,14 @@ class ToiSpider(scrapy.Spider):
     MAX_OLD_ARTICLE_RATIO: ClassVar[float] = 0.5
     MIN_ARTICLES_BEFORE_RATIO_CHECK: ClassVar[int] = 200
     MAX_LINKS_PER_PAGE: ClassVar[int] = 15
+    MAX_PUBLISHED_AGE_HOURS: ClassVar[int] = 24
 
     DEFAULT_LIMITS: ClassVar[SpiderLimits] = SpiderLimits(
         max_total_articles=MAX_TOTAL_ARTICLES,
         old_article_max_age=OLD_ARTICLE_MAX_AGE,
         max_old_article_ratio=MAX_OLD_ARTICLE_RATIO,
         min_articles_before_ratio_check=MIN_ARTICLES_BEFORE_RATIO_CHECK,
+        max_published_age_hours=MAX_PUBLISHED_AGE_HOURS,
     )
 
     @classmethod
@@ -83,6 +85,7 @@ class ToiSpider(scrapy.Spider):
         old_article_max_age_days: str | None = None,
         max_old_article_ratio: str | None = None,
         min_articles_before_ratio_check: str | None = None,
+        max_published_age_hours: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -91,6 +94,7 @@ class ToiSpider(scrapy.Spider):
             old_article_max_age_days=old_article_max_age_days,
             max_old_article_ratio=max_old_article_ratio,
             min_articles_before_ratio_check=min_articles_before_ratio_check,
+            max_published_age_hours=max_published_age_hours,
             defaults=self.DEFAULT_LIMITS,
         )
         self.tracker: ScopeTracker | None = None
@@ -148,7 +152,7 @@ class ToiSpider(scrapy.Spider):
         return max(
             0,
             self.limits.max_total_articles
-            - self.tracker.total_articles.get(scope, 0),
+            - self.tracker.fresh_articles.get(scope, 0),
         )
 
     def _schedule_new_links(
@@ -406,8 +410,8 @@ class ToiSpider(scrapy.Spider):
             response_url=response.url,
         )
 
-        self.tracker.register(item.scope, item.published_at)
-        yield item
+        if self.tracker.evaluate(item.scope, item.published_at):
+            yield item
 
         stop_reason = self.tracker.should_stop(item.scope)
         if stop_reason is not None:

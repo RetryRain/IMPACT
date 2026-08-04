@@ -86,6 +86,7 @@ class TestToiSpider:
         spider = make_spider(
             max_total_articles="10",
             min_articles_before_ratio_check="0",
+            max_published_age_hours="0",
         )
         response = make_html_response(
             "https://timesofindia.indiatimes.com/world/sample/articleshow/1.cms",
@@ -97,7 +98,7 @@ class TestToiSpider:
         assert item.source == "The Times of India"
         follow_ups = [value for value in results[1:] if hasattr(value, "callback")]
         assert follow_ups
-        assert spider.tracker.total_articles["World"] == 1
+        assert spider.tracker.fresh_articles["World"] == 1
 
     def test_parse_article_does_not_expand_links_for_india(
         self, make_html_response
@@ -105,6 +106,7 @@ class TestToiSpider:
         spider = make_spider(
             max_total_articles="10",
             min_articles_before_ratio_check="0",
+            max_published_age_hours="0",
         )
         response = make_html_response(
             "https://timesofindia.indiatimes.com/india/sample/articleshow/1.cms",

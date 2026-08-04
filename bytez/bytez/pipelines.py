@@ -1,7 +1,31 @@
+from datetime import timedelta
 from urllib.parse import urlsplit, urlunsplit
 
 from itemadapter import ItemAdapter
 from scrapy.exceptions import DropItem
+
+from bytez.spiders.common import is_within_published_window
+
+
+class AgeFilterPipeline:
+    def open_spider(self, spider):
+        limits = getattr(spider, "limits", None)
+        if limits is None or limits.max_published_age_hours == 0:
+            self.max_age = None
+            return
+        self.max_age = timedelta(hours=limits.max_published_age_hours)
+
+    def process_item(self, item, spider):
+        if self.max_age is None:
+            return item
+
+        adapter = ItemAdapter(item)
+        published_at = adapter.get("published_at")
+        if not is_within_published_window(published_at, max_age=self.max_age):
+            raise DropItem(
+                f"Article outside published window ({self.max_age}): {published_at!r}"
+            )
+        return item
 
 
 class BytezPipeline:

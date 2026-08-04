@@ -104,11 +104,32 @@ class TestIndianExpressSpider:
         assert spider.limits.old_article_max_age == timedelta(days=1)
         assert spider.limits.max_old_article_ratio == 0.25
         assert spider.limits.min_articles_before_ratio_check == 10
+        assert spider.limits.max_published_age_hours == 24
 
-    def test_article_cap_behavior(self, make_json_response):
+    def test_stale_api_page_stops_pagination(self, make_json_response):
+        spider = make_spider(min_articles_before_ratio_check="0")
+        payload = load_json_fixture("indianexpress", "api_page.json")
+        response = make_json_response(
+            "https://www.newindianexpress.com/api/v1/collections/india",
+            payload,
+        )
+        list(
+            spider.parse(
+                response,
+                scope="India",
+                api_url="https://www.newindianexpress.com/api/v1/collections/india",
+                offset=0,
+            )
+        )
+        assert spider.tracker.is_stopped("India")
+        assert (
+            spider.tracker.stopped_scopes["India"]
+            == "pagination reached stale content"
+        )
         spider = make_spider(
             max_total_articles="1",
             min_articles_before_ratio_check="0",
+            max_published_age_hours="0",
         )
         payload = load_json_fixture("indianexpress", "api_page.json")
         response = make_json_response(
