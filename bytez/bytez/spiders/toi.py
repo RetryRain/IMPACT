@@ -13,6 +13,7 @@ from bytez.spiders.common import (
     SpiderLimits,
     bounded_links,
     format_published_at,
+    make_scope_meta,
     parse_spider_limits,
     scope_errback,
     utc_now_iso,
@@ -60,12 +61,19 @@ class ToiSpider(scrapy.Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
+        if not hasattr(crawler, "bytez_stopped_scope_keys"):
+            crawler.bytez_stopped_scope_keys = set()
         spider = super().from_crawler(crawler, *args, **kwargs)
         spider.tracker = ScopeTracker(
             spider.limits,
             stats=crawler.stats,
             logger=spider.logger,
+            scope_prefix=cls.name,
+            stopped_scope_sink=crawler.bytez_stopped_scope_keys,
         )
+        spider._scheduled_urls: dict[str, set[str]] = {
+            scope: set() for scope in cls.SCOPES
+        }
         return spider
 
     def __init__(
@@ -94,6 +102,7 @@ class ToiSpider(scrapy.Spider):
             errback=scope_errback(
                 self, self.tracker, self.INDIA_SCOPE, self.SCOPES, label="feed"
             ),
+            meta=make_scope_meta(self.name, self.INDIA_SCOPE),
             cb_kwargs={"scope": self.INDIA_SCOPE},
         )
 
@@ -103,6 +112,7 @@ class ToiSpider(scrapy.Spider):
             errback=scope_errback(
                 self, self.tracker, self.WORLD_SCOPE, self.SCOPES, label="listing"
             ),
+            meta=make_scope_meta(self.name, self.WORLD_SCOPE),
             cb_kwargs={"scope": self.WORLD_SCOPE},
         )
 
@@ -129,6 +139,56 @@ class ToiSpider(scrapy.Spider):
         filter_fn = self._world_allows_url if scope == self.WORLD_SCOPE else None
         return bounded_links(links, self.MAX_LINKS_PER_PAGE, filter_fn=filter_fn)
 
+    def _should_expand_links(self, scope: str) -> bool:
+        """India is fed from the JSON top-news feed; in-page link crawl drifts
+        into city/astrology sections and balloons the scheduler queue."""
+        return scope != self.INDIA_SCOPE
+
+    def _remaining_article_budget(self, scope: str) -> int:
+        return max(
+            0,
+            self.limits.max_total_articles
+            - self.tracker.total_articles.get(scope, 0),
+        )
+
+    def _schedule_new_links(
+        self, response, scope: str, links: list[str]
+    ):
+        budget = self._remaining_article_budget(scope)
+        if budget <= 0 or not self._should_expand_links(scope):
+            return
+
+        seen = self._scheduled_urls[scope]
+        for link in links:
+            if budget <= 0:
+                break
+            if link == response.url or link in seen:
+                continue
+            seen.add(link)
+            budget -= 1
+            yield self._follow_article(response, link, scope)
+
+    def _follow_article(
+        self,
+        response,
+        url: str,
+        scope: str,
+        *,
+        item: BytezItem | None = None,
+    ):
+        cb_kwargs: dict[str, Any] = {"scope": scope}
+        if item is not None:
+            cb_kwargs["item"] = item
+        return response.follow(
+            url,
+            callback=self.parse_article,
+            errback=scope_errback(
+                self, self.tracker, scope, self.SCOPES, label="article"
+            ),
+            meta=make_scope_meta(self.name, scope),
+            cb_kwargs=cb_kwargs,
+        )
+
     def closed(self, reason: str) -> None:
         for scope in self.SCOPES:
             self.tracker.log_scope_summary(scope, reason)
@@ -141,9 +201,21 @@ class ToiSpider(scrapy.Spider):
             if self.tracker.is_stopped(scope):
                 break
 
+            if self._remaining_article_budget(scope) <= 0:
+                self.tracker.handle_scope_stop(
+                    scope,
+                    self.tracker.should_stop(scope) or "article limit reached",
+                    self.SCOPES,
+                )
+                break
+
             url = article.get("wu")
             if not url or "/articleshow/" not in url:
                 continue
+
+            if url in self._scheduled_urls[scope]:
+                continue
+            self._scheduled_urls[scope].add(url)
 
             item = BytezItem(
                 title=article.get("hl"),
@@ -154,13 +226,11 @@ class ToiSpider(scrapy.Spider):
                 language=self.LANGUAGE,
             )
 
-            yield response.follow(
+            yield self._follow_article(
+                response,
                 url,
-                callback=self.parse_article,
-                errback=scope_errback(
-                    self, self.tracker, scope, self.SCOPES, label="article"
-                ),
-                cb_kwargs={"item": item},
+                scope,
+                item=item,
             )
 
         if not self.tracker.is_stopped(scope):
@@ -184,14 +254,10 @@ class ToiSpider(scrapy.Spider):
             return
 
         for link in links:
-            yield response.follow(
-                link,
-                callback=self.parse_article,
-                errback=scope_errback(
-                    self, self.tracker, scope, self.SCOPES, label="article"
-                ),
-                cb_kwargs={"scope": scope},
-            )
+            if link in self._scheduled_urls[scope]:
+                continue
+            self._scheduled_urls[scope].add(link)
+            yield self._follow_article(response, link, scope)
 
     def extract_article_links(self, response) -> set[str]:
         links: set[str] = set()
@@ -320,21 +386,7 @@ class ToiSpider(scrapy.Spider):
             links = self._filter_links_for_scope(
                 self.extract_article_links(response), effective_scope
             )
-
-            for link in links:
-                if link != response.url:
-                    yield response.follow(
-                        link,
-                        callback=self.parse_article,
-                        errback=scope_errback(
-                            self,
-                            self.tracker,
-                            effective_scope,
-                            self.SCOPES,
-                            label="article",
-                        ),
-                        cb_kwargs={"scope": effective_scope},
-                    )
+            yield from self._schedule_new_links(response, effective_scope, links)
             return
 
         if item is None:
@@ -365,20 +417,4 @@ class ToiSpider(scrapy.Spider):
         links = self._filter_links_for_scope(
             self.extract_article_links(response), item.scope
         )
-
-        for link in links:
-            if link == response.url:
-                continue
-
-            yield response.follow(
-                link,
-                callback=self.parse_article,
-                errback=scope_errback(
-                    self,
-                    self.tracker,
-                    item.scope,
-                    self.SCOPES,
-                    label="article",
-                ),
-                cb_kwargs={"scope": item.scope},
-            )
+        yield from self._schedule_new_links(response, item.scope, links)

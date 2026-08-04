@@ -11,7 +11,20 @@ pip install scrapy pytest
 pytest
 ```
 
-Run bounded smoke crawls:
+Run all publishers in one crawl and export to a single file:
+
+```bash
+scrapy crawl all_spiders -O data.json
+```
+
+For bounded runs, pass explicit limits — defaults allow up to 1000 articles per TOI scope:
+
+```bash
+scrapy crawl toi -a max_total_articles=50 -a min_articles_before_ratio_check=0
+scrapy crawl all_spiders -O data.json -a max_total_articles=50 -a min_articles_before_ratio_check=0
+```
+
+Run individual spiders:
 
 ```bash
 scrapy crawl indianexpress -a max_total_articles=5 -a min_articles_before_ratio_check=0

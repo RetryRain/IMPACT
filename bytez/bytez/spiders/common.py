@@ -132,6 +132,10 @@ def bounded_links(
     return sorted(unique)[:cap]
 
 
+def make_scope_meta(spider_name: str, scope: str) -> dict[str, str]:
+    return {"bytez_scope_key": f"{spider_name}/{scope}"}
+
+
 class ScopeTracker:
     def __init__(
         self,
@@ -139,13 +143,24 @@ class ScopeTracker:
         *,
         stats: StatsCollector | None = None,
         logger: Any = None,
+        close_on_all_scopes: bool = True,
+        scope_prefix: str = "",
+        stopped_scope_sink: set[str] | None = None,
     ) -> None:
         self.limits = limits
         self.stats = stats
         self.logger = logger
+        self.close_on_all_scopes = close_on_all_scopes
+        self.scope_prefix = scope_prefix
+        self.stopped_scope_sink = stopped_scope_sink
         self.total_articles: dict[str, int] = {}
         self.old_articles: dict[str, int] = {}
         self.stopped_scopes: dict[str, str] = {}
+
+    def scope_key(self, scope: str) -> str:
+        if self.scope_prefix:
+            return f"{self.scope_prefix}/{scope}"
+        return scope
 
     def is_stopped(self, scope: str) -> bool:
         return scope in self.stopped_scopes
@@ -181,6 +196,8 @@ class ScopeTracker:
         self.stopped_scopes[scope] = reason
         if self.stats is not None:
             self.stats.set_value(f"scope/{scope}/stop_reason", reason)
+        if self.stopped_scope_sink is not None:
+            self.stopped_scope_sink.add(self.scope_key(scope))
         if self.logger is not None:
             self.logger.info("%s crawl finished: %s", scope, reason)
         return True
@@ -196,7 +213,7 @@ class ScopeTracker:
             raise CloseSpider(combined)
 
     def handle_scope_stop(self, scope: str, reason: str, scopes: tuple[str, ...]) -> None:
-        if self.stop(scope, reason):
+        if self.stop(scope, reason) and self.close_on_all_scopes:
             self.maybe_close_spider(scopes)
 
     def log_scope_summary(self, scope: str, fallback_reason: str) -> None:

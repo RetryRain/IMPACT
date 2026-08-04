@@ -11,6 +11,7 @@ from bytez.spiders.common import (
     ScopeTracker,
     SpiderLimits,
     format_published_at,
+    make_scope_meta,
     parse_spider_limits,
     scope_errback,
     utc_now_iso,
@@ -49,11 +50,15 @@ class HinduSpider(scrapy.Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
+        if not hasattr(crawler, "bytez_stopped_scope_keys"):
+            crawler.bytez_stopped_scope_keys = set()
         spider = super().from_crawler(crawler, *args, **kwargs)
         spider.tracker = ScopeTracker(
             spider.limits,
             stats=crawler.stats,
             logger=spider.logger,
+            scope_prefix=cls.name,
+            stopped_scope_sink=crawler.bytez_stopped_scope_keys,
         )
         return spider
 
@@ -84,6 +89,7 @@ class HinduSpider(scrapy.Spider):
                 errback=scope_errback(
                     self, self.tracker, scope, self.SCOPES, label="listing"
                 ),
+                meta=make_scope_meta(self.name, scope),
                 cb_kwargs={"scope": scope},
             )
 
@@ -205,6 +211,7 @@ class HinduSpider(scrapy.Spider):
                 errback=scope_errback(
                     self, self.tracker, scope, self.SCOPES, label="article"
                 ),
+                meta=make_scope_meta(self.name, scope),
                 cb_kwargs={"item": item, "scope": scope},
             )
             scheduled = True
@@ -222,6 +229,7 @@ class HinduSpider(scrapy.Spider):
                 errback=scope_errback(
                     self, self.tracker, scope, self.SCOPES, label="listing"
                 ),
+                meta=make_scope_meta(self.name, scope),
                 cb_kwargs={"scope": scope},
             )
         elif not scheduled:

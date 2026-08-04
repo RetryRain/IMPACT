@@ -14,6 +14,7 @@ from tests.conftest import load_fixture, load_json_fixture
 def make_spider(**kwargs) -> ToiSpider:
     crawler = MagicMock()
     crawler.stats = MagicMock()
+    crawler.bytez_stopped_scope_keys = set()
     return ToiSpider.from_crawler(crawler, **kwargs)
 
 
@@ -79,7 +80,7 @@ class TestToiSpider:
         assert item.language == "en"
         assert item.body == "Body paragraph one."
 
-    def test_parse_article_registers_item_and_expands_links(
+    def test_parse_article_registers_item_and_expands_links_for_world(
         self, make_html_response
     ):
         spider = make_spider(
@@ -97,6 +98,26 @@ class TestToiSpider:
         follow_ups = [value for value in results[1:] if hasattr(value, "callback")]
         assert follow_ups
         assert spider.tracker.total_articles["World"] == 1
+
+    def test_parse_article_does_not_expand_links_for_india(
+        self, make_html_response
+    ):
+        spider = make_spider(
+            max_total_articles="10",
+            min_articles_before_ratio_check="0",
+        )
+        response = make_html_response(
+            "https://timesofindia.indiatimes.com/india/sample/articleshow/1.cms",
+            load_fixture("toi", "article.html"),
+        )
+        results = list(spider.parse_article(response, scope=ToiSpider.INDIA_SCOPE))
+        assert len(results) == 1
+        assert results[0].title == "JSON-LD headline"
+
+    def test_stopped_scope_registers_in_crawler_sink(self):
+        spider = make_spider(min_articles_before_ratio_check="0")
+        spider.tracker.stop(ToiSpider.INDIA_SCOPE, "test stop")
+        assert "toi/India" in spider.crawler.bytez_stopped_scope_keys
 
     def test_runtime_args_override_defaults(self):
         spider = make_spider(

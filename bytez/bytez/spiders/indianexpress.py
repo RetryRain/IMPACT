@@ -14,6 +14,7 @@ from bytez.spiders.common import (
     SpiderLimits,
     parse_spider_limits,
     scope_errback,
+    make_scope_meta,
     utc_now_iso,
 )
 
@@ -65,11 +66,15 @@ class IndianExpressSpider(scrapy.Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
+        if not hasattr(crawler, "bytez_stopped_scope_keys"):
+            crawler.bytez_stopped_scope_keys = set()
         spider = super().from_crawler(crawler, *args, **kwargs)
         spider.tracker = ScopeTracker(
             spider.limits,
             stats=crawler.stats,
             logger=spider.logger,
+            scope_prefix=cls.name,
+            stopped_scope_sink=crawler.bytez_stopped_scope_keys,
         )
         return spider
 
@@ -104,6 +109,7 @@ class IndianExpressSpider(scrapy.Spider):
             f"{api_url}?{query}",
             callback=self.parse,
             errback=scope_errback(self, self.tracker, scope, self.SCOPES),
+            meta=make_scope_meta(self.name, scope),
             cb_kwargs={"scope": scope, "api_url": api_url, "offset": offset},
         )
 

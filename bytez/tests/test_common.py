@@ -100,6 +100,7 @@ class TestBoundedLinks:
 
 class TestScopeTracker:
     def _tracker(self, **overrides) -> ScopeTracker:
+        close_on_all_scopes = overrides.pop("close_on_all_scopes", True)
         limits = SpiderLimits(
             max_total_articles=overrides.pop("max_total_articles", 3),
             old_article_max_age=timedelta(days=1),
@@ -110,7 +111,12 @@ class TestScopeTracker:
         )
         stats = MagicMock()
         logger = MagicMock()
-        return ScopeTracker(limits, stats=stats, logger=logger)
+        return ScopeTracker(
+            limits,
+            stats=stats,
+            logger=logger,
+            close_on_all_scopes=close_on_all_scopes,
+        )
 
     def test_article_cap_stop_reason(self):
         tracker = self._tracker(max_total_articles=2)
@@ -147,6 +153,12 @@ class TestScopeTracker:
         tracker.stop("World", "listing exhausted")
         with pytest.raises(CloseSpider):
             tracker.maybe_close_spider(("India", "World"))
+
+    def test_handle_scope_stop_skips_close_when_disabled(self):
+        tracker = self._tracker(close_on_all_scopes=False)
+        tracker.handle_scope_stop("India", "feed exhausted", ("India", "World"))
+        tracker.handle_scope_stop("World", "listing exhausted", ("India", "World"))
+        assert tracker.all_stopped(("India", "World"))
 
     def test_log_scope_summary_format(self):
         tracker = self._tracker()
