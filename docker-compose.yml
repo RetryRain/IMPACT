@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: bytez
+      POSTGRES_PASSWORD: bytez
+      POSTGRES_DB: bytez
+    ports:
+      - "5432:5432"
+    volumes:
+      - bytez_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bytez -d bytez"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  bytez_pgdata:

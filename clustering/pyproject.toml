@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bytez-clustering"
+version = "0.1.0"
+description = "Semantic duplicate detection and story clustering for Bytez"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.13",
+    "numpy>=1.26",
+    "pgvector>=0.3",
+    "psycopg[binary]>=3.1",
+    "pydantic-settings>=2.2",
+    "sentence-transformers>=3.0",
+    "sqlalchemy>=2.0",
+    "torch>=2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+bytez-cluster = "clustering.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clustering*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: requires PostgreSQL with pgvector",
+]
