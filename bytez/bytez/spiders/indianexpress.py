@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, ClassVar
 from urllib.parse import urlencode
 
@@ -123,7 +123,7 @@ class IndianExpressSpider(scrapy.Spider):
             return None
         try:
             return (
-                datetime.fromtimestamp(value / 1000, tz=UTC)
+                datetime.fromtimestamp(value / 1000, tz=timezone.utc)
                 .replace(microsecond=0)
                 .isoformat()
             )

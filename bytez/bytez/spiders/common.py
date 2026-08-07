@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from scrapy.exceptions import CloseSpider
@@ -93,7 +93,7 @@ def parse_spider_limits(
 
 
 def utc_now_iso() -> str:
-    return datetime.now(UTC).replace(microsecond=0).isoformat()
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def parse_iso_timestamp(value: str | None) -> datetime | None:
@@ -111,8 +111,8 @@ def format_published_at(value: str | None) -> str | None:
     if parsed is None:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC).replace(microsecond=0).isoformat()
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def is_old_article(
@@ -122,8 +122,8 @@ def is_old_article(
     if parsed is None:
         return False
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return (datetime.now(UTC) - parsed) > max_age
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - parsed) > max_age
 
 
 def is_within_published_window(
@@ -133,8 +133,8 @@ def is_within_published_window(
     if parsed is None:
         return False
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return (datetime.now(UTC) - parsed) <= max_age
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - parsed) <= max_age
 
 
 def bounded_links(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -69,22 +69,22 @@ class TestTimestamps:
 
     def test_parse_iso_timestamp_handles_zulu(self):
         parsed = parse_iso_timestamp("2024-01-01T12:00:00Z")
-        assert parsed == datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+        assert parsed == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     def test_format_published_at_normalizes_to_utc_seconds(self):
         formatted = format_published_at("2024-02-15T08:30:00+05:30")
         assert formatted == "2024-02-15T03:00:00+00:00"
 
     def test_is_old_article_treats_naive_as_utc(self):
-        old = (datetime.now(UTC) - timedelta(days=5)).replace(microsecond=0)
+        old = (datetime.now(timezone.utc) - timedelta(days=5)).replace(microsecond=0)
         assert is_old_article(old.isoformat(), max_age=timedelta(days=1))
 
     def test_is_within_published_window_accepts_recent(self):
-        recent = datetime.now(UTC).isoformat()
+        recent = datetime.now(timezone.utc).isoformat()
         assert is_within_published_window(recent, max_age=timedelta(hours=24))
 
     def test_is_within_published_window_rejects_stale_and_missing(self):
-        stale = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
         assert not is_within_published_window(stale, max_age=timedelta(hours=24))
         assert not is_within_published_window(None, max_age=timedelta(hours=24))
 
@@ -128,8 +128,8 @@ class TestScopeTracker:
 
     def test_evaluate_fresh_stale_and_unknown(self):
         tracker = self._tracker(max_published_age_hours=24)
-        fresh = datetime.now(UTC).isoformat()
-        stale = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        fresh = datetime.now(timezone.utc).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
 
         assert tracker.evaluate("India", fresh) is True
         assert tracker.evaluate("India", stale) is False
@@ -141,8 +141,8 @@ class TestScopeTracker:
 
     def test_article_cap_uses_fresh_only(self):
         tracker = self._tracker(max_total_articles=2, max_published_age_hours=24)
-        fresh = datetime.now(UTC).isoformat()
-        stale = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        fresh = datetime.now(timezone.utc).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
 
         tracker.evaluate("India", stale)
         tracker.evaluate("India", stale)
@@ -160,7 +160,7 @@ class TestScopeTracker:
             min_articles_before_ratio_check=2,
             max_published_age_hours=24,
         )
-        stale = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
         tracker.evaluate("India", stale)
         tracker.evaluate("India", stale)
         reason = tracker.should_stop("India")
@@ -169,7 +169,7 @@ class TestScopeTracker:
 
     def test_legacy_mode_register_counts_all_items(self):
         tracker = self._tracker(max_published_age_hours=0)
-        old = (datetime.now(UTC) - timedelta(days=5)).isoformat()
+        old = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
         tracker.register("India", old)
         tracker.stats.inc_value.assert_any_call("scope/India/items")
         tracker.stats.inc_value.assert_any_call("scope/India/old_items")
@@ -191,7 +191,7 @@ class TestScopeTracker:
 
     def test_log_scope_summary_format(self):
         tracker = self._tracker()
-        fresh = datetime.now(UTC).isoformat()
+        fresh = datetime.now(timezone.utc).isoformat()
         tracker.evaluate("India", fresh)
         tracker.stop("India", "feed exhausted")
         tracker.log_scope_summary("India", "shutdown")

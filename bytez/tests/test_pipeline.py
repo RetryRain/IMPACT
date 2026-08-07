@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -27,7 +27,7 @@ class TestAgeFilterPipeline:
         stale = BytezItem(
             title="Stale",
             url="https://example.com/stale",
-            published_at=(datetime.now(UTC) - timedelta(days=2)).isoformat(),
+            published_at=(datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
             scope="India",
             source="Example",
             language="en",
@@ -62,7 +62,7 @@ class TestAgeFilterPipeline:
         fresh = BytezItem(
             title="Fresh",
             url="https://example.com/fresh",
-            published_at=datetime.now(UTC).isoformat(),
+            published_at=datetime.now(timezone.utc).isoformat(),
             scope="India",
             source="Example",
             language="en",
@@ -85,7 +85,7 @@ class TestAgeFilterPipeline:
         stale = BytezItem(
             title="Stale",
             url="https://example.com/stale-legacy",
-            published_at=(datetime.now(UTC) - timedelta(days=2)).isoformat(),
+            published_at=(datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
             scope="India",
             source="Example",
             language="en",
