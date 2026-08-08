@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +18,11 @@ class Settings(BaseSettings):
     body_char_limit: int = 800
     batch_size: int = 32
     cluster_cooldown_minutes: int = 10
+
+    @field_validator("database_url")
+    @classmethod
+    def strip_database_url(cls, value: str) -> str:
+        return value.strip()
 
 
 @lru_cache

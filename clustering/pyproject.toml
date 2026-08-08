@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.13",
+    "google-cloud-storage>=2.14",
     "numpy>=1.26",
     "pgvector>=0.3",
     "psycopg[binary]>=3.1",
@@ -27,9 +28,8 @@ dev = [
 [project.scripts]
 bytez-cluster = "clustering.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["clustering*"]
+[tool.setuptools]
+packages = ["clustering"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

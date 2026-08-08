@@ -107,3 +107,7 @@ pytest
 ```
 
 Integration tests against Postgres are skipped unless `DATABASE_URL` is set and reachable.
+
+## Cloud Run deployment
+
+See [DEPLOY.md](DEPLOY.md) for Cloud Run Jobs setup. For the full end-to-end pipeline (scrape VM + GCS + cron + verify), see [../PIPELINE.md](../PIPELINE.md).
