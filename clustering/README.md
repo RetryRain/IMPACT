@@ -27,7 +27,7 @@ cd clustering
 alembic upgrade head
 ```
 
-Environment variables (optional `.env` in `clustering/`):
+Environment variables: copy [`.env.example`](.env.example) to `.env` in this directory and edit values. `.env` is gitignored.
 
 | Variable | Default |
 |----------|---------|
