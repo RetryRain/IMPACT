@@ -7,14 +7,17 @@ import pytest
 from scrapy.exceptions import CloseSpider
 
 from bytez.spiders.common import (
+    IST,
     ScopeTracker,
     SpiderLimits,
     bounded_links,
     format_published_at,
     is_old_article,
     is_within_published_window,
+    ist_now_iso,
     parse_iso_timestamp,
     parse_spider_limits,
+    to_ist_iso,
     utc_now_iso,
 )
 
@@ -62,29 +65,40 @@ class TestParseSpiderLimits:
 
 
 class TestTimestamps:
-    def test_utc_now_iso_has_seconds_precision(self):
-        value = utc_now_iso()
-        assert value.endswith("+00:00")
+    def test_ist_now_iso_has_seconds_precision(self):
+        value = ist_now_iso()
+        assert value.endswith("+05:30")
         assert "." not in value
+
+    def test_utc_now_iso_alias_returns_ist(self):
+        assert utc_now_iso().endswith("+05:30")
 
     def test_parse_iso_timestamp_handles_zulu(self):
         parsed = parse_iso_timestamp("2024-01-01T12:00:00Z")
         assert parsed == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
-    def test_format_published_at_normalizes_to_utc_seconds(self):
+    def test_format_published_at_normalizes_to_ist_seconds(self):
         formatted = format_published_at("2024-02-15T08:30:00+05:30")
-        assert formatted == "2024-02-15T03:00:00+00:00"
+        assert formatted == "2024-02-15T08:30:00+05:30"
 
-    def test_is_old_article_treats_naive_as_utc(self):
-        old = (datetime.now(timezone.utc) - timedelta(days=5)).replace(microsecond=0)
+    def test_format_published_at_converts_utc_to_ist(self):
+        formatted = format_published_at("2024-01-01T12:00:00Z")
+        assert formatted == "2024-01-01T17:30:00+05:30"
+
+    def test_to_ist_iso_converts_utc_epoch(self):
+        formatted = to_ist_iso(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
+        assert formatted == "2024-01-01T05:30:00+05:30"
+
+    def test_is_old_article_treats_naive_as_ist(self):
+        old = (datetime.now(IST) - timedelta(days=5)).replace(microsecond=0)
         assert is_old_article(old.isoformat(), max_age=timedelta(days=1))
 
     def test_is_within_published_window_accepts_recent(self):
-        recent = datetime.now(timezone.utc).isoformat()
+        recent = datetime.now(IST).isoformat()
         assert is_within_published_window(recent, max_age=timedelta(hours=24))
 
     def test_is_within_published_window_rejects_stale_and_missing(self):
-        stale = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+        stale = (datetime.now(IST) - timedelta(days=2)).isoformat()
         assert not is_within_published_window(stale, max_age=timedelta(hours=24))
         assert not is_within_published_window(None, max_age=timedelta(hours=24))
 
@@ -195,7 +209,7 @@ class TestScopeTracker:
         tracker.evaluate("India", fresh)
         tracker.stop("India", "feed exhausted")
         tracker.log_scope_summary("India", "shutdown")
-        tracker.logger.info.assert_called_with(
+        tracker.logger.debug.assert_called_with(
             "[%s] fresh=%d stale=%d unknown=%d stale_ratio=%.2f%% stop_reason=%s",
             "India",
             1,

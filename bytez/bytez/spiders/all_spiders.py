@@ -38,8 +38,6 @@ class AllSpidersSpider(scrapy.Spider):
         "thehindu.com",
     )
 
-    custom_settings: ClassVar[dict[str, str]] = IndianExpressSpider.custom_settings
-
     def __init__(
         self,
         *args: Any,
@@ -84,7 +82,7 @@ class AllSpidersSpider(scrapy.Spider):
             if tracker is not None:
                 total_articles += sum(tracker.fresh_articles.values())
 
-        self.logger.info(
+        self.logger.debug(
             "all_spiders crawl finished: reason=%s total_articles=%d",
             reason,
             total_articles,

@@ -186,9 +186,69 @@ SELECT status, COUNT(*) FROM story_clusters GROUP BY status;
 ## Free tier notes
 
 - Cloud Run Jobs: free tier includes substantial monthly CPU/memory seconds; ~4 runs/day × ~10–15 min at 2 GiB usually stays near $0.
-- Bake the embedding model into the image (Dockerfile does this) to avoid Hugging Face downloads each run.
+- The embedding model (`all-MiniLM-L6-v2`, ~90 MB) is **downloaded on first use** from Hugging Face and cached under `HF_HOME`. First run after a cold start adds ~1–2 minutes; later runs in the same container reuse the cache.
 - Use **2 GiB** memory, **1 vCPU** — enough for MiniLM on CPU.
 - Artifact Registry: keep one image tag; delete old images if storage exceeds free 0.5 GB.
+
+## Image size
+
+The Dockerfile uses a **multi-stage build** so compiler tooling (`build-essential`, ~200 MB) and pip caches stay out of the pushed image. The runtime image contains only Python slim, installed wheels (PyTorch CPU, sentence-transformers, etc.), and Alembic migration files.
+
+**Typical sizes** (Artifact Registry compressed):
+
+| Variant | Approx. size |
+|---------|----------------|
+| Old single-stage + baked model | ~600–650 MB |
+| Multi-stage, model downloaded at runtime | ~400–500 MB |
+
+### Build locally and check size
+
+```bash
+cd clustering
+docker build -t impact-cluster:local .
+
+# Uncompressed image size
+docker image ls impact-cluster:local
+
+# Approximate compressed push size (what Artifact Registry bills)
+docker save impact-cluster:local | wc -c
+# Windows PowerShell:
+# (docker save impact-cluster:local -o nul) 2>$null; use `docker buildx imagetools inspect` if using buildx
+```
+
+On Linux/macOS, `docker history impact-cluster:local --human` shows which layers dominate.
+
+### Push a smaller image
+
+```bash
+export REGION=us-central1
+export PROJECT_ID=your-gcp-project
+
+docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/impact/cluster:latest .
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/impact/cluster:latest
+
+gcloud run jobs update impact-cluster \
+  --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/impact/cluster:latest \
+  --region $REGION
+```
+
+Or via Cloud Build:
+
+```bash
+gcloud builds submit --config cloudbuild.cluster.yaml .
+```
+
+### Optional further reductions (not applied by default)
+
+| Change | Savings | Trade-off |
+|--------|---------|-----------|
+| Multi-stage build (already on) | ~150–250 MB | None |
+| Drop baked model (already on) | ~80–90 MB | First embed step downloads model |
+| Pin `torch` CPU wheel only in `pyproject.toml` | Small | Must not install CUDA torch by mistake |
+| `docker build --squash` (experimental) | Variable | Loses layer cache; harder to debug |
+| ONNX / lighter runtime instead of PyTorch | Large | Code change; out of scope today |
+
+Do **not** remove PyTorch or sentence-transformers — they are required for embeddings.
 
 ## Local test of the container
 

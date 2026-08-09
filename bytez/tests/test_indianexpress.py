@@ -25,13 +25,13 @@ class TestIndianExpressSpider:
         assert item.source == "The New Indian Express"
         assert item.tags == ["Politics"]
         assert item.image == "https://images.example.com/hero.jpg"
-        assert item.published_at == "2024-01-01T00:00:00+00:00"
+        assert item.published_at == "2024-01-01T05:30:00+05:30"
         assert "First paragraph with bold text." in item.body
         assert "Also read" not in item.body
         assert "Promo block" not in item.body
         assert "Linked story teaser" not in item.body
         assert "Second paragraph." in item.body
-        assert item.scraped_at.endswith("+00:00")
+        assert item.scraped_at.endswith("+05:30")
 
     def test_uses_cdn_fallback_when_original_image_url_is_missing(self):
         story = {

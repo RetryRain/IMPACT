@@ -14,7 +14,7 @@ from bytez.spiders.common import (
     make_scope_meta,
     parse_spider_limits,
     scope_errback,
-    utc_now_iso,
+    ist_now_iso,
 )
 
 
@@ -179,7 +179,7 @@ class HinduSpider(scrapy.Spider):
 
         item.source = cls.SOURCE
         item.language = cls.LANGUAGE
-        item.scraped_at = utc_now_iso()
+        item.scraped_at = ist_now_iso()
         return item
 
     def parse(self, response, scope: str):
@@ -239,7 +239,7 @@ class HinduSpider(scrapy.Spider):
         elif not scheduled:
             self.tracker.handle_scope_stop(scope, "listing exhausted", self.SCOPES)
         else:
-            self.logger.info(
+            self.logger.debug(
                 "%s listing discovery complete: listing exhausted", scope
             )
             if self.tracker.stats is not None:

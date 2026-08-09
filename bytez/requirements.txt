@@ -1,0 +1,2 @@
+scrapy>=2.11
+brotlicffi>=1.2.0

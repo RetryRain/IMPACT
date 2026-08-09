@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from clustering.timezone_util import IST, to_ist_iso
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -166,7 +168,7 @@ def mark_ready_clusters(
     session: Session, *, force: bool = False
 ) -> dict[str, int]:
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(IST)
     cooldown = timedelta(minutes=settings.cluster_cooldown_minutes)
 
     clusters = list(
@@ -187,7 +189,7 @@ def mark_ready_clusters(
 
         last_seen = cluster.updated_at or cluster.last_published_at
         if last_seen.tzinfo is None:
-            last_seen = last_seen.replace(tzinfo=timezone.utc)
+            last_seen = last_seen.replace(tzinfo=IST)
 
         if now - last_seen >= cooldown and cluster.article_count >= 1:
             cluster.status = ClusterStatus.READY_FOR_LLM
@@ -212,7 +214,7 @@ def get_cluster_payload(session: Session, cluster_id) -> dict:
     articles = sorted(
         cluster.articles,
         key=lambda article: article.published_at or datetime.min.replace(
-            tzinfo=timezone.utc
+            tzinfo=IST
         ),
     )
 
@@ -229,7 +231,7 @@ def get_cluster_payload(session: Session, cluster_id) -> dict:
                 "summary": article.summary,
                 "body": article.body,
                 "published_at": (
-                    article.published_at.isoformat() if article.published_at else None
+                    to_ist_iso(article.published_at) if article.published_at else None
                 ),
             }
             for article in articles

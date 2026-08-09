@@ -28,8 +28,9 @@ dev = [
 [project.scripts]
 bytez-cluster = "clustering.cli:main"
 
-[tool.setuptools]
-packages = ["clustering"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clustering*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

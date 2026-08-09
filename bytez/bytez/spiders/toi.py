@@ -16,7 +16,7 @@ from bytez.spiders.common import (
     make_scope_meta,
     parse_spider_limits,
     scope_errback,
-    utc_now_iso,
+    ist_now_iso,
 )
 
 
@@ -238,7 +238,7 @@ class ToiSpider(scrapy.Spider):
             )
 
         if not self.tracker.is_stopped(scope):
-            self.logger.info("%s feed discovery complete: feed exhausted", scope)
+            self.logger.debug("%s feed discovery complete: feed exhausted", scope)
             if self.tracker.stats is not None:
                 self.tracker.stats.set_value(
                     f"scope/{scope}/discovery_complete",
@@ -369,7 +369,7 @@ class ToiSpider(scrapy.Spider):
         item.tags = keywords
         item.source = cls.SOURCE
         item.language = cls.LANGUAGE
-        item.scraped_at = utc_now_iso()
+        item.scraped_at = ist_now_iso()
         return item
 
     def parse_article(

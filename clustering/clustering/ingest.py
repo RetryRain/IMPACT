@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from clustering.db.models import Article
 from clustering.log import info
+from clustering.timezone_util import IST
 
 
 def _parse_datetime(value: Any) -> datetime | None:
@@ -17,7 +18,7 @@ def _parse_datetime(value: Any) -> datetime | None:
         return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
+            return value.replace(tzinfo=IST)
         return value
     if isinstance(value, str):
         text = value.strip()
@@ -30,7 +31,7 @@ def _parse_datetime(value: Any) -> datetime | None:
         except ValueError:
             return None
         if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=timezone.utc)
+            return parsed.replace(tzinfo=IST)
         return parsed
     return None
 

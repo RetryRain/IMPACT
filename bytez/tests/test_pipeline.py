@@ -31,7 +31,7 @@ class TestAgeFilterPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         with pytest.raises(DropItem):
             pipeline.process_item(stale, spider)
@@ -42,7 +42,7 @@ class TestAgeFilterPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         with pytest.raises(DropItem):
             pipeline.process_item(missing, spider)
@@ -66,7 +66,7 @@ class TestAgeFilterPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         assert pipeline.process_item(fresh, spider) is fresh
 
@@ -89,7 +89,7 @@ class TestAgeFilterPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         assert pipeline.process_item(stale, spider) is stale
 
@@ -103,7 +103,7 @@ class TestBytezPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         pipeline.process_item(item)
 
@@ -113,7 +113,7 @@ class TestBytezPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         with pytest.raises(DropItem):
             pipeline.process_item(duplicate)
@@ -127,7 +127,7 @@ class TestBytezPipeline:
             scope="India",
             source="Example",
             language="en",
-            scraped_at="2024-01-01T00:00:00+00:00",
+            scraped_at="2024-01-01T05:30:00+05:30",
         )
         processed = pipeline.process_item(item)
         assert processed["body"] == "First paragraph.\nSecond paragraph."

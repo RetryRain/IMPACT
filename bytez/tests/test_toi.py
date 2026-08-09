@@ -75,8 +75,8 @@ class TestToiSpider:
         item = spider._populate_from_jsonld(
             item, data, scope="World", response_url=response.url
         )
-        assert item.published_at == "2024-01-01T12:00:00+00:00"
-        assert item.scraped_at.endswith("+00:00")
+        assert item.published_at == "2024-01-01T17:30:00+05:30"
+        assert item.scraped_at.endswith("+05:30")
         assert item.language == "en"
         assert item.body == "Body paragraph one."
 

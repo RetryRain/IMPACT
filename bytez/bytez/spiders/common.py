@@ -92,8 +92,22 @@ def parse_spider_limits(
     )
 
 
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def to_ist_iso(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=IST)
+    return value.astimezone(IST).replace(microsecond=0).isoformat()
+
+
+def ist_now_iso() -> str:
+    return to_ist_iso(datetime.now(IST))
+
+
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    """Backward-compatible alias; timestamps are stored in IST."""
+    return ist_now_iso()
 
 
 def parse_iso_timestamp(value: str | None) -> datetime | None:
@@ -110,9 +124,13 @@ def format_published_at(value: str | None) -> str | None:
     parsed = parse_iso_timestamp(value)
     if parsed is None:
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+    return to_ist_iso(parsed)
+
+
+def _ensure_aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=IST)
+    return value
 
 
 def is_old_article(
@@ -121,9 +139,7 @@ def is_old_article(
     parsed = parse_iso_timestamp(published_at)
     if parsed is None:
         return False
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - parsed) > max_age
+    return (datetime.now(IST) - _ensure_aware(parsed).astimezone(IST)) > max_age
 
 
 def is_within_published_window(
@@ -132,9 +148,7 @@ def is_within_published_window(
     parsed = parse_iso_timestamp(published_at)
     if parsed is None:
         return False
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - parsed) <= max_age
+    return (datetime.now(IST) - _ensure_aware(parsed).astimezone(IST)) <= max_age
 
 
 def bounded_links(
@@ -273,7 +287,7 @@ class ScopeTracker:
         if self.stopped_scope_sink is not None:
             self.stopped_scope_sink.add(self.scope_key(scope))
         if self.logger is not None:
-            self.logger.info("%s crawl finished: %s", scope, reason)
+            self.logger.debug("%s crawl finished: %s", scope, reason)
         return True
 
     def all_stopped(self, scopes: tuple[str, ...]) -> bool:
@@ -298,7 +312,7 @@ class ScopeTracker:
         unknown = self.unknown_articles.get(scope, 0)
         encounters = fresh + stale + unknown
         stale_ratio = (stale + unknown) / encounters if encounters else 0.0
-        self.logger.info(
+        self.logger.debug(
             "[%s] fresh=%d stale=%d unknown=%d stale_ratio=%.2f%% stop_reason=%s",
             scope,
             fresh,

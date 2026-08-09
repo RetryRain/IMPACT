@@ -15,7 +15,8 @@ from bytez.spiders.common import (
     parse_spider_limits,
     scope_errback,
     make_scope_meta,
-    utc_now_iso,
+    ist_now_iso,
+    to_ist_iso,
 )
 
 
@@ -45,12 +46,6 @@ class IndianExpressSpider(scrapy.Spider):
     SOURCE: ClassVar[str] = "The New Indian Express"
     LANGUAGE: ClassVar[str] = "en"
     IMAGE_CDN_URL: ClassVar[str] = "https://d3lzcn6mbbadaf.cloudfront.net/"
-    BROWSER_USER_AGENT: ClassVar[str] = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/138.0.0.0 Safari/537.36"
-    )
-    custom_settings: ClassVar[dict[str, str]] = {"USER_AGENT": BROWSER_USER_AGENT}
 
     MAX_TOTAL_ARTICLES: ClassVar[int] = 1000
     OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=1)
@@ -122,10 +117,8 @@ class IndianExpressSpider(scrapy.Spider):
         if not isinstance(value, (int, float)):
             return None
         try:
-            return (
+            return to_ist_iso(
                 datetime.fromtimestamp(value / 1000, tz=timezone.utc)
-                .replace(microsecond=0)
-                .isoformat()
             )
         except (OverflowError, OSError, ValueError):
             return None
@@ -237,7 +230,7 @@ class IndianExpressSpider(scrapy.Spider):
             tags=tag_names,
             source=cls.SOURCE,
             language=cls.LANGUAGE,
-            scraped_at=utc_now_iso(),
+            scraped_at=ist_now_iso(),
         )
 
     def parse(

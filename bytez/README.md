@@ -7,9 +7,11 @@ Scrapy project for collecting news articles from Indian publishers.
 Install dependencies and run tests from the `bytez/` directory:
 
 ```bash
-pip install scrapy pytest
+pip install -r requirements.txt pytest
 pytest
 ```
+
+`brotlicffi` is required so HTML responses compressed with Brotli (`br`) can be decoded. Without it, only API-based sources like Indian Express will scrape successfully when browser `Accept-Encoding` headers are enabled.
 
 ## Freshness filter (default: last 24 hours)
 

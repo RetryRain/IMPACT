@@ -15,8 +15,10 @@ NEWSPIDER_MODULE = "bytez.spiders"
 ADDONS = {}
 
 
-# Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = "bytez (+http://www.yourdomain.com)"
+from bytez.browser import BROWSER_REQUEST_HEADERS, BROWSER_USER_AGENT
+
+USER_AGENT = BROWSER_USER_AGENT
+DEFAULT_REQUEST_HEADERS = BROWSER_REQUEST_HEADERS
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -32,12 +34,6 @@ DOWNLOAD_DELAY = 1
 # Disable Telnet Console (enabled by default)
 # TELNETCONSOLE_ENABLED = False
 
-# Override the default request headers:
-# DEFAULT_REQUEST_HEADERS = {
-#    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-#    "Accept-Language": "en",
-# }
-
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 # SPIDER_MIDDLEWARES = {
@@ -48,6 +44,7 @@ DOWNLOAD_DELAY = 1
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     "bytez.middlewares.ScopeStopDownloaderMiddleware": 50,
+    "bytez.middlewares.BrowserHeadersMiddleware": 100,
 }
 
 # Enable or disable extensions
@@ -87,6 +84,18 @@ ITEM_PIPELINES = {
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
 
+LOG_LEVEL = "DEBUG"
+LOG_FILE = "logs/scrapy.log"
+LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+LOG_DATEFORMAT = "%Y-%m-%d %H:%M:%S"
+
 EXTENSIONS = {
+    "bytez.extensions.ProdLoggingExtension": 0,
+    "bytez.extensions.CrawlProgressExtension": 50,
+    "bytez.extensions.ItemFileLogExtension": 100,
     "bytez.extensions.CrawlSummaryExtension": 500,
 }
+
+# Console progress: heartbeat every N seconds + milestone every M articles (0 disables heartbeat)
+BYTEZ_PROGRESS_HEARTBEAT_SECONDS = 10
+BYTEZ_PROGRESS_ITEM_STEP = 10

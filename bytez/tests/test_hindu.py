@@ -64,10 +64,10 @@ class TestHinduSpider:
         )
         item = HinduSpider._populate_article(item, response)
         assert item.summary == "Article summary"
-        assert item.published_at == "2024-02-15T03:00:00+00:00"
+        assert item.published_at == "2024-02-15T08:30:00+05:30"
         assert item.tags == ["Tamil Nadu", "Politics"]
         assert item.author == "Page Author"
-        assert item.scraped_at.endswith("+00:00")
+        assert item.scraped_at.endswith("+05:30")
 
     def test_listing_schedules_article_and_pagination(
         self, make_html_response
