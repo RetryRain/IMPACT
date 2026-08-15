@@ -89,6 +89,8 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     result = SynthesisResult(
         action="rewrite",
         drop_reason=None,
+        scope="Tamil Nadu",
+        priority=82,
         title="Rewritten title",
         summary="Rewritten summary",
         body="Rewritten body",
@@ -109,6 +111,8 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     assert story.image == article.image
     assert story.tags == article.tags
     assert story.language == article.language
+    assert story.scope == "Tamil Nadu"
+    assert story.priority == 82
     assert story.source_urls == [article.url, other.url]
     assert story.sources == ["TOI", "The Hindu"]
     assert story.synthesized_at == synthesized_at
@@ -148,6 +152,8 @@ def test_synthesize_clusters_drop_skips_publish(get_session_mock, get_publish_mo
     mock_client.synthesize_cluster.return_value = SynthesisResult(
         action="drop",
         drop_reason="Sports highlight",
+        scope=None,
+        priority=None,
         title=None,
         summary=None,
         body=None,

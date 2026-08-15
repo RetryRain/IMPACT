@@ -94,10 +94,22 @@ python -m clustering.cli synthesize --limit 10
 
 The worker sends one OpenRouter request per cluster. Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
 
-- LLM fields: `title`, `summary`, `body`
-- Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `scope`, `published_at`, `scraped_at`
+- LLM fields: `title`, `summary`, `body`, `scope` (verified), `priority` (1–100 editorial score)
+- Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `published_at`, `scraped_at`
 - Provenance: `source_urls`, `sources`
 - `synthesized_at` — timestamp when the OpenRouter response was received
+
+The LLM verifies the crawler-assigned scope (`assigned_scope` in the payload) and returns one of `India`, `Tamil Nadu`, or `World`. Priority is scored from Tamil Nadu impact only — not from article count or outlet volume.
+
+### Feed ordering
+
+Order published stories by editorial priority, then recency:
+
+```sql
+ORDER BY priority DESC, published_at DESC NULLS LAST
+```
+
+Filter by verified scope (e.g. `WHERE scope = 'Tamil Nadu'`).
 
 ## Pipeline
 

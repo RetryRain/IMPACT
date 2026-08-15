@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any
 
@@ -13,7 +14,9 @@ from clustering.synthesis.prompt import (
     SYSTEM_PROMPT,
     SynthesisResult,
     build_user_message,
+    parse_synthesis_result,
 )
+
 
 def _strip_markdown_fences(text: str) -> str:
     stripped = text.strip()
@@ -25,6 +28,64 @@ def _strip_markdown_fences(text: str) -> str:
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
     return "\n".join(lines).strip()
+
+
+def _message_text(message: dict[str, Any]) -> str | None:
+    content = message.get("content")
+    if isinstance(content, str) and content.strip():
+        return content.strip()
+
+    reasoning = message.get("reasoning")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning.strip()
+
+    details = message.get("reasoning_details")
+    if isinstance(details, list):
+        parts: list[str] = []
+        for item in details:
+            if isinstance(item, dict) and item.get("type") == "reasoning.text":
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    parts.append(text.strip())
+        if parts:
+            return "\n".join(parts)
+
+    return None
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    stripped = _strip_markdown_fences(text)
+    if not stripped:
+        raise ValueError("empty text")
+
+    try:
+        data = json.loads(stripped)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", stripped, re.DOTALL)
+    if fenced:
+        try:
+            data = json.loads(fenced.group(1))
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            pass
+
+    for start in range(len(stripped) - 1, -1, -1):
+        if stripped[start] != "{":
+            continue
+        candidate = stripped[start:]
+        try:
+            data = json.loads(candidate)
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            continue
+
+    raise ValueError("no JSON object found")
 
 
 class SynthesisError(RuntimeError):
@@ -87,8 +148,20 @@ class OpenRouterClient:
                 },
             },
         }
-        response = self._post_with_retry("/chat/completions", body)
-        return self._parse_response(response)
+        last_error: StructuredOutputError | None = None
+        for attempt in range(2):
+            try:
+                response = self._post_with_retry("/chat/completions", body)
+                return self._parse_response(response)
+            except StructuredOutputError as exc:
+                last_error = exc
+                if attempt == 0:
+                    time.sleep(1.0)
+                    continue
+                raise
+        if last_error is not None:
+            raise last_error
+        raise SynthesisError("synthesis failed after retries")
 
     def _post_with_retry(self, path: str, body: dict[str, Any]) -> httpx.Response:
         last_error: Exception | None = None
@@ -125,26 +198,31 @@ class OpenRouterClient:
                 f"OpenRouter response missing choices: {payload}"
             )
 
-        message = choices[0].get("message", {})
-        content = message.get("content")
-        if not isinstance(content, str) or not content.strip():
+        choice = choices[0]
+        message = choice.get("message", {})
+        if not isinstance(message, dict):
+            raise StructuredOutputError(
+                f"OpenRouter response missing message: {payload}"
+            )
+
+        text = _message_text(message)
+        if not text:
             raise StructuredOutputError(
                 f"OpenRouter response missing message content: {payload}"
             )
 
-        return self._parse_structured_content(content)
+        return self._parse_structured_content(text)
 
     def _parse_structured_content(self, content: str) -> SynthesisResult:
-        text = _strip_markdown_fences(content)
         try:
-            data = json.loads(text)
-        except json.JSONDecodeError as exc:
+            data = _extract_json_object(content)
+        except ValueError as exc:
             raise StructuredOutputError(
                 f"OpenRouter returned invalid JSON: {exc}"
             ) from exc
 
         try:
-            return SynthesisResult.model_validate(data)
+            return parse_synthesis_result(data)
         except ValidationError as exc:
             raise StructuredOutputError(
                 f"OpenRouter JSON failed validation: {exc}"
