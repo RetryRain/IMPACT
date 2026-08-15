@@ -19,9 +19,23 @@ class Settings(BaseSettings):
     batch_size: int = 32
     cluster_cooldown_minutes: int = 10
 
-    @field_validator("database_url")
+    synthesis_database_url: str = (
+        "postgresql+psycopg://user:pass@placeholder-host/neondb?sslmode=require"
+    )
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "google/gemini-2.5-flash"
+    synthesis_body_char_limit: int = 800
+    synthesis_timeout_seconds: int = 120
+
+    @field_validator("database_url", "synthesis_database_url")
     @classmethod
     def strip_database_url(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("openrouter_api_key", "openrouter_base_url", "openrouter_model")
+    @classmethod
+    def strip_openrouter_fields(cls, value: str) -> str:
         return value.strip()
 
 

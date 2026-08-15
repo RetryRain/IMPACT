@@ -10,10 +10,12 @@ from clustering.assigner import (
     get_cluster_payload,
     mark_ready_clusters,
 )
+from clustering.db.publish_session import check_publish_database_connection
 from clustering.db.session import check_database_connection, get_session
 from clustering.embedder import embed_articles
 from clustering.ingest import ingest_json_file
 from clustering.log import configure_logging, info, stage
+from clustering.synthesis.worker import synthesize_clusters
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
@@ -84,6 +86,15 @@ def _cmd_show_cluster(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_synthesize(args: argparse.Namespace) -> int:
+    check_database_connection()
+    check_publish_database_connection()
+    stage("Synthesize")
+    stats = synthesize_clusters(limit=args.limit)
+    print(json.dumps(stats, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bytez-cluster",
@@ -125,6 +136,12 @@ def build_parser() -> argparse.ArgumentParser:
     show_parser = subparsers.add_parser("show-cluster", help="Show cluster payload")
     show_parser.add_argument("cluster_id", help="Cluster UUID")
     show_parser.set_defaults(func=_cmd_show_cluster)
+
+    synthesize_parser = subparsers.add_parser(
+        "synthesize", help="Rewrite ready_for_llm clusters via OpenRouter"
+    )
+    synthesize_parser.add_argument("--limit", type=int, default=None)
+    synthesize_parser.set_defaults(func=_cmd_synthesize)
 
     return parser
 

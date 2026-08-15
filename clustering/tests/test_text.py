@@ -1,4 +1,9 @@
-from clustering.text import build_embedding_text, hash_embedding_text, normalize_whitespace
+from clustering.text import (
+    article_content_hash,
+    build_embedding_text,
+    hash_embedding_text,
+    normalize_whitespace,
+)
 
 
 def test_normalize_whitespace_collapses_runs():
@@ -26,3 +31,8 @@ def test_hash_embedding_text_is_stable():
     text = build_embedding_text("A", "B", "C")
     assert hash_embedding_text(text) == hash_embedding_text(text)
     assert len(hash_embedding_text(text)) == 64
+
+
+def test_article_content_hash_matches_embedding_text_hash():
+    text = build_embedding_text("A", "B", "C")
+    assert article_content_hash("A", "B", "C") == hash_embedding_text(text)

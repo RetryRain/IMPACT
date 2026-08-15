@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from clustering.config import get_settings
@@ -59,23 +59,26 @@ def embed_texts(texts: list[str]) -> np.ndarray:
     return np.asarray(vectors, dtype=np.float32)
 
 
-def _needs_embedding(article: Article, text_hash: str) -> bool:
-    existing = article.embedding
+def _purge_stale_model_embeddings(session: Session) -> int:
     settings = get_settings()
-    if existing is None:
-        return True
-    if existing.model_name != settings.embedding_model:
-        return True
-    if existing.text_hash != text_hash:
-        return True
-    return False
+    result = session.execute(
+        delete(ArticleEmbedding).where(
+            ArticleEmbedding.model_name != settings.embedding_model
+        )
+    )
+    return result.rowcount or 0
 
 
 def embed_articles(session: Session, *, limit: int | None = None) -> dict[str, int]:
     settings = get_settings()
+    purged = _purge_stale_model_embeddings(session)
+    if purged:
+        info(f"Removed {purged} embeddings from a previous model.")
+
     query = (
         select(Article)
-        .outerjoin(ArticleEmbedding)
+        .outerjoin(ArticleEmbedding, ArticleEmbedding.article_id == Article.id)
+        .where(ArticleEmbedding.article_id.is_(None))
         .order_by(Article.published_at.asc().nulls_last(), Article.created_at.asc())
     )
     if limit is not None:
@@ -84,24 +87,19 @@ def embed_articles(session: Session, *, limit: int | None = None) -> dict[str, i
     articles = list(session.scalars(query))
     pending: list[tuple[Article, str, str]] = []
 
-    info(f"Scanning {len(articles)} articles for embedding ...")
+    info(f"Embedding {len(articles)} articles missing vectors ...")
     for article in articles:
         text = build_embedding_text(article.title, article.summary, article.body)
         if not text:
             continue
         text_hash = hash_embedding_text(text)
-        if _needs_embedding(article, text_hash):
-            pending.append((article, text, text_hash))
-
-    already_embedded = len(articles) - len(pending)
-    if already_embedded:
-        info(f"  {already_embedded} already embedded, skipping.")
+        pending.append((article, text, text_hash))
 
     embedded = 0
 
     if pending:
         info(
-            f"Embedding {len(pending)} articles "
+            f"Encoding {len(pending)} articles "
             f"(batch size {settings.batch_size}) ..."
         )
 
@@ -111,19 +109,13 @@ def embed_articles(session: Session, *, limit: int | None = None) -> dict[str, i
         vectors = embed_texts(texts)
 
         for (article, _text, text_hash), vector in zip(batch, vectors, strict=True):
-            if article.embedding is None:
-                article.embedding = ArticleEmbedding(
-                    article_id=article.id,
-                    model_name=settings.embedding_model,
-                    dim=settings.embedding_dim,
-                    embedding=vector.tolist(),
-                    text_hash=text_hash,
-                )
-            else:
-                article.embedding.model_name = settings.embedding_model
-                article.embedding.dim = settings.embedding_dim
-                article.embedding.embedding = vector.tolist()
-                article.embedding.text_hash = text_hash
+            article.embedding = ArticleEmbedding(
+                article_id=article.id,
+                model_name=settings.embedding_model,
+                dim=settings.embedding_dim,
+                embedding=vector.tolist(),
+                text_hash=text_hash,
+            )
             embedded += 1
 
         done = min(start + settings.batch_size, len(pending))

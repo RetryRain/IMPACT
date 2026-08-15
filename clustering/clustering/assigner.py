@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from clustering.timezone_util import IST, to_ist_iso
@@ -12,7 +14,16 @@ from clustering.db.models import Article, ArticleEmbedding, ClusterStatus, Story
 from clustering.log import info
 
 
-def _effective_threshold(article: Article, neighbor: Article, similarity: float) -> float:
+@dataclass(frozen=True, slots=True)
+class _NeighborMatch:
+    id: uuid.UUID
+    source: str | None
+    cluster_id: uuid.UUID | None
+
+
+def _effective_threshold(
+    article: Article, neighbor: _NeighborMatch, similarity: float
+) -> float:
     settings = get_settings()
     if (
         article.source
@@ -27,7 +38,7 @@ def _find_nearest_neighbor(
     session: Session,
     article: Article,
     embedding: list[float],
-) -> tuple[Article | None, float]:
+) -> tuple[_NeighborMatch | None, float]:
     settings = get_settings()
     if article.published_at is None:
         return None, -1.0
@@ -43,7 +54,12 @@ def _find_nearest_neighbor(
     similarity_expr = (1 - distance_expr).label("similarity")
 
     stmt = (
-        select(Article, similarity_expr)
+        select(
+            Article.id,
+            Article.source,
+            Article.cluster_id,
+            similarity_expr,
+        )
         .join(ArticleEmbedding, ArticleEmbedding.article_id == Article.id)
         .where(Article.id != article.id)
         .where(Article.scope == article.scope)
@@ -58,8 +74,11 @@ def _find_nearest_neighbor(
     if row is None:
         return None, -1.0
 
-    neighbor, similarity = row
-    return neighbor, float(similarity)
+    neighbor_id, source, cluster_id, similarity = row
+    return (
+        _NeighborMatch(id=neighbor_id, source=source, cluster_id=cluster_id),
+        float(similarity),
+    )
 
 
 def _create_cluster(session: Session, article: Article) -> StoryCluster:

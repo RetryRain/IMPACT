@@ -17,7 +17,11 @@ Wait until the container is healthy (`docker compose ps`), then:
 2. Install dependencies (from repo root or `clustering/`):
 
 ```bash
+# Clustering only (ingest / embed / assign)
 pip install -e "./clustering[dev]"
+
+# Include synthesis (OpenRouter); required for `synthesize`
+pip install -e "./clustering[dev,synthesis]"
 ```
 
 3. Run migrations:
@@ -26,6 +30,8 @@ pip install -e "./clustering[dev]"
 cd clustering
 alembic upgrade head
 ```
+
+Migration `002` adds `articles.content_hash` for incremental ingest. Run once against Neon before deploying the new code.
 
 Environment variables: copy [`.env.example`](.env.example) to `.env` in this directory and edit values. `.env` is gitignored.
 
@@ -39,6 +45,12 @@ Environment variables: copy [`.env.example`](.env.example) to `.env` in this dir
 | `BODY_CHAR_LIMIT` | `800` |
 | `BATCH_SIZE` | `32` |
 | `CLUSTER_COOLDOWN_MINUTES` | `10` |
+| `SYNTHESIS_DATABASE_URL` | placeholder Neon publish DB |
+| `OPENROUTER_API_KEY` | required for synthesis |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
+| `OPENROUTER_MODEL` | `google/gemini-2.5-flash` |
+| `SYNTHESIS_BODY_CHAR_LIMIT` | `800` |
+| `SYNTHESIS_TIMEOUT_SECONDS` | `120` |
 
 ## CLI
 
@@ -56,12 +68,41 @@ python -m clustering.cli assign --limit 500
 
 # Inspect a cluster (LLM handoff payload)
 python -m clustering.cli show-cluster <cluster_id>
+
+# Synthesize ready_for_llm clusters via OpenRouter
+python -m clustering.cli synthesize --limit 10
 ```
+
+## Synthesis (OpenRouter)
+
+After clustering marks story groups `ready_for_llm`, run the synthesis worker against a **separate Neon database**:
+
+1. Install synthesis extras: `pip install -e "./clustering[synthesis]"` (or `[dev,synthesis]` for local dev).
+2. Set `OPENROUTER_API_KEY`, `SYNTHESIS_DATABASE_URL`, and optionally `OPENROUTER_MODEL` in `.env`.
+3. Run publish migrations:
+
+```bash
+cd clustering
+alembic -c alembic_publish.ini upgrade head
+```
+
+4. Synthesize:
+
+```bash
+python -m clustering.cli synthesize --limit 10
+```
+
+The worker sends one OpenRouter request per cluster. Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
+
+- LLM fields: `title`, `summary`, `body`
+- Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `scope`, `published_at`, `scraped_at`
+- Provenance: `source_urls`, `sources`
+- `synthesized_at` — timestamp when the OpenRouter response was received
 
 ## Pipeline
 
-1. **Ingest** — Upsert Scrapy `BytezItem` JSON exports on `url`.
-2. **Embed** — Build text from `title`, `summary`, and first ~800 chars of `body`; hash to skip unchanged articles.
+1. **Ingest** — Batch-lookup URLs by `content_hash`; skip rewriting unchanged article bodies, but still refresh `scraped_at` on every scrape. Content updates invalidate the article embedding.
+2. **Embed** — Only articles missing an embedding row (new or invalidated); does not scan the full table.
 3. **Assign** — For each unassigned article (by `published_at`):
    - Find nearest neighbor within 48h, same `scope`.
    - If cosine similarity ≥ threshold (0.90 if same `source`, else 0.82) and neighbor has a cluster → join it.

@@ -72,10 +72,35 @@ def test_ingest_json_upserts_on_url(pg_session, tmp_path: Path):
     first = ingest_json_file(pg_session, path)
     second = ingest_json_file(pg_session, path)
 
-    assert first == {"created": 1, "updated": 0, "skipped": 0}
-    assert second == {"created": 0, "updated": 1, "skipped": 0}
+    assert first == {"created": 1, "updated": 1, "unchanged": 0, "skipped": 0}
+    assert second == {"created": 0, "updated": 1, "unchanged": 1, "skipped": 0}
     assert len(list(pg_session.scalars(select(Article)))) == 1
     assert pg_session.scalar(select(Article)).title == "Updated"
+
+
+def test_ingest_skips_unchanged_repeat(pg_session, tmp_path: Path):
+    items = [
+        {
+            "url": "https://example.com/b",
+            "title": "Stable",
+            "scope": "India",
+            "published_at": "2026-08-05T10:00:00+00:00",
+            "scraped_at": "2026-08-05T10:00:00+00:00",
+        }
+    ]
+    path = tmp_path / "stable.json"
+    path.write_text(json.dumps(items), encoding="utf-8")
+
+    first = ingest_json_file(pg_session, path)
+
+    items[0]["scraped_at"] = "2026-08-15T12:00:00+00:00"
+    path.write_text(json.dumps(items), encoding="utf-8")
+    second = ingest_json_file(pg_session, path)
+
+    article = pg_session.scalar(select(Article))
+    assert first == {"created": 1, "updated": 0, "unchanged": 0, "skipped": 0}
+    assert second == {"created": 0, "updated": 0, "unchanged": 1, "skipped": 0}
+    assert article.scraped_at == datetime(2026, 8, 15, 12, 0, tzinfo=timezone.utc)
 
 
 def _add_article(session, *, url: str, title: str, source: str, published_at: datetime):

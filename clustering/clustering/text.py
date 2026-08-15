@@ -41,3 +41,11 @@ def build_embedding_text(
 
 def hash_embedding_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def article_content_hash(
+    title: str | None,
+    summary: str | None,
+    body: str | None,
+) -> str:
+    return hash_embedding_text(build_embedding_text(title, summary, body))
