@@ -116,7 +116,7 @@ class HinduSpider(scrapy.Spider):
         author = article.css(".author-name a::text").get(default="").strip()
         summary = article.css(".sub-text a::text").get(default="").strip()
 
-        image = (
+        image = cls._upgrade_hindu_image_url(
             article.css(".picture img::attr(data-original)").get()
             or article.css(".picture img::attr(data-src-template)").get()
             or article.css(".picture img::attr(src)").get()
@@ -147,8 +147,44 @@ class HinduSpider(scrapy.Spider):
         return "\n".join(paragraphs)
 
     @classmethod
+    def _upgrade_hindu_image_url(cls, url: str | None) -> str | None:
+        if not url:
+            return None
+        cleaned = url.strip()
+        if not cleaned:
+            return None
+        if "/alternates/SQUARE_80/" in cleaned:
+            return cleaned.replace(
+                "/alternates/SQUARE_80/", "/alternates/LANDSCAPE_1200/"
+            )
+        return cleaned
+
+    @classmethod
+    def _extract_article_image(cls, response) -> str | None:
+        for selector in (
+            'meta[property="og:image"]::attr(content)',
+            'meta[property="og:image:url"]::attr(content)',
+            'meta[name="og:image"]::attr(content)',
+            'meta[itemprop="image"]::attr(content)',
+            'link[rel="image_src"]::attr(href)',
+        ):
+            value = response.css(selector).get()
+            if value and value.strip():
+                return cls._upgrade_hindu_image_url(value.strip())
+        return None
+
+    @classmethod
+    def _resolve_image(cls, item: BytezItem, response) -> str | None:
+        article_image = cls._extract_article_image(response)
+        if article_image:
+            return article_image
+        return cls._upgrade_hindu_image_url(item.image)
+
+    @classmethod
     def _populate_article(cls, item: BytezItem, response) -> BytezItem:
         item.body = cls._extract_body(response)
+
+        item.image = cls._resolve_image(item, response)
 
         item.summary = (
             response.css('meta[itemprop="description"]::attr(content)')

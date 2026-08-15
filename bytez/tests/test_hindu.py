@@ -50,6 +50,61 @@ class TestHinduSpider:
         assert "Opening paragraph with nested emphasis and a link." in body
         assert "Second paragraph." in body
 
+    def test_upgrade_hindu_image_url_replaces_square_thumbnail(self):
+        url = (
+            "https://th-i.thgim.com/public/incoming/vxc3kl/article71347042.ece/"
+            "alternates/SQUARE_80/AFP_C4ME3ZR.jpg"
+        )
+        upgraded = HinduSpider._upgrade_hindu_image_url(url)
+        assert upgraded.endswith("/alternates/LANDSCAPE_1200/AFP_C4ME3ZR.jpg")
+
+    def test_populate_article_uses_og_image(self, make_html_response):
+        response = make_html_response(
+            "https://www.thehindu.com/news/national/article.ece",
+            load_fixture("hindu", "article.html"),
+        )
+        item = BytezItem(
+            title="Listing title",
+            url=response.url,
+            scope="India",
+            source="The Hindu",
+            language="en",
+            image=(
+                "https://th-i.thgim.com/public/incoming/vxc3kl/article71347042.ece/"
+                "alternates/SQUARE_80/AFP_C4ME3ZR.jpg"
+            ),
+        )
+        item = HinduSpider._populate_article(item, response)
+        assert item.image == (
+            "https://th-i.thgim.com/public/incoming/vxc3kl/article71347042.ece/"
+            "alternates/LANDSCAPE_1200/AFP_C4ME3ZR.jpg"
+        )
+
+    def test_populate_article_upgrades_listing_thumbnail_without_og_image(
+        self, make_html_response
+    ):
+        html = load_fixture("hindu", "article.html").replace(
+            '<meta property="og:image" content="https://th-i.thgim.com/public/incoming/vxc3kl/article71347042.ece/alternates/LANDSCAPE_1200/AFP_C4ME3ZR.jpg" />',
+            "",
+        )
+        response = make_html_response(
+            "https://www.thehindu.com/news/national/article.ece",
+            html,
+        )
+        item = BytezItem(
+            title="Listing title",
+            url=response.url,
+            scope="India",
+            source="The Hindu",
+            language="en",
+            image=(
+                "https://th-i.thgim.com/public/incoming/vxc3kl/article71347042.ece/"
+                "alternates/SQUARE_80/AFP_C4ME3ZR.jpg"
+            ),
+        )
+        item = HinduSpider._populate_article(item, response)
+        assert item.image.endswith("/alternates/LANDSCAPE_1200/AFP_C4ME3ZR.jpg")
+
     def test_populate_article_normalizes_fields(self, make_html_response):
         response = make_html_response(
             "https://www.thehindu.com/news/national/article.ece",

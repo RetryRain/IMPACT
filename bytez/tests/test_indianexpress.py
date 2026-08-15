@@ -42,7 +42,61 @@ class TestIndianExpressSpider:
         }
         item = IndianExpressSpider._item_from_story(story, "India")
         assert item.image == (
-            "https://d3lzcn6mbbadaf.cloudfront.net/media/photo.jpg"
+            "https://cf-images.assettype.com/media%2Fphoto.jpg?"
+            "w=1200&auto=format%2Ccompress&fit=max"
+        )
+
+    def test_parse_srcset_selects_largest_width(self):
+        srcset = (
+            "//cf-images.assettype.com/newindianexpress%2F2026-08-15%2F4txb7dch%2F"
+            "Census-2027.jpg?w=480&auto=format%2Ccompress&fit=max 480w,"
+            "//cf-images.assettype.com/newindianexpress%2F2026-08-15%2F4txb7dch%2F"
+            "Census-2027.jpg?w=640&auto=format%2Ccompress&fit=max 640w,"
+            "//cf-images.assettype.com/newindianexpress%2F2026-08-15%2F4txb7dch%2F"
+            "Census-2027.jpg?w=1200&auto=format%2Ccompress&fit=max 1200w"
+        )
+        url = IndianExpressSpider._parse_srcset(srcset)
+        assert url is not None
+        assert url.startswith("https://")
+        assert "w=1200" in url
+
+    def test_upgrade_cf_image_url_from_protocol_relative_src(self):
+        src = (
+            "//cf-images.assettype.com/newindianexpress%2F2025-01-09%2F6e54z38v%2F"
+            "drought.jpg?w=480&auto=format%2Ccompress&fit=max"
+        )
+        upgraded = IndianExpressSpider._upgrade_cf_image_url(src)
+        assert upgraded is not None
+        assert upgraded.startswith("https://cf-images.assettype.com/")
+        assert "w=1200" in upgraded
+
+    def test_cf_images_url_from_s3_key(self):
+        url = IndianExpressSpider._cf_images_url_from_s3_key(
+            "newindianexpress/2026-08-15/4txb7dch/Census-2027.jpg"
+        )
+        assert url == (
+            "https://cf-images.assettype.com/"
+            "newindianexpress%2F2026-08-15%2F4txb7dch%2FCensus-2027.jpg"
+            "?w=1200&auto=format%2Ccompress&fit=max"
+        )
+
+    def test_cloudfront_original_url_falls_back_to_cf_images_s3_key(self):
+        story = {
+            "url": "https://www.newindianexpress.com/story.html",
+            "headline": "Headline",
+            "hero-image-metadata": {
+                "original-url": (
+                    "https://d3lzcn6mbbadaf.cloudfront.net/media/photo.jpg"
+                ),
+            },
+            "hero-image-s3-key": "newindianexpress/2026-08-15/4txb7dch/Census-2027.jpg",
+            "cards": [],
+        }
+        item = IndianExpressSpider._item_from_story(story, "India")
+        assert item.image == (
+            "https://cf-images.assettype.com/"
+            "newindianexpress%2F2026-08-15%2F4txb7dch%2FCensus-2027.jpg"
+            "?w=1200&auto=format%2Ccompress&fit=max"
         )
 
     def test_builds_expected_paginated_request(self):

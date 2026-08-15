@@ -8,13 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from clustering.assigner import get_cluster_payload
-from clustering.config import get_settings
 from clustering.db.models import Article, ClusterStatus, StoryCluster
 from clustering.db.publish_models import SynthesizedStory
 from clustering.db.publish_session import get_publish_session
 from clustering.db.session import get_session
 from clustering.log import info
-from clustering.synthesis.openrouter_client import OpenRouterClient, SynthesisError
+from clustering.synthesis.client import get_synthesis_client, SynthesisClient
+from clustering.synthesis.llm_client import SynthesisError
 from clustering.synthesis.prompt import SynthesisResult
 from clustering.slug import make_story_slug
 from clustering.timezone_util import IST
@@ -91,14 +91,8 @@ def _claim_ready_clusters(
 def synthesize_clusters(
     *,
     limit: int | None = None,
-    llm_client: OpenRouterClient | None = None,
+    llm_client: SynthesisClient | None = None,
 ) -> dict[str, Any]:
-    settings = get_settings()
-    if not settings.openrouter_api_key:
-        raise SystemExit(
-            "OPENROUTER_API_KEY is required. Set it in clustering/.env and retry."
-        )
-
     stats = {
         "examined": 0,
         "rewritten": 0,
@@ -108,7 +102,7 @@ def synthesize_clusters(
     }
 
     owns_client = llm_client is None
-    client = llm_client or OpenRouterClient()
+    client = llm_client or get_synthesis_client()
 
     try:
         with get_session() as cluster_session:
@@ -152,7 +146,7 @@ def synthesize_clusters(
 
 def _process_cluster(
     cluster_session: Session,
-    client: OpenRouterClient,
+    client: SynthesisClient,
     cluster_id: uuid.UUID,
 ) -> str:
     cluster = cluster_session.get(

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     synthesis_database_url: str = (
         "postgresql+psycopg://user:pass@placeholder-host/neondb?sslmode=require"
     )
+    synthesis_provider: str = "deepseek"
+    deepseek_api_key: str = ""
+    deepseek_base_url: str = "https://api.deepseek.com/v1"
+    deepseek_model: str = "deepseek-chat"
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "google/gemini-2.5-flash"
@@ -33,9 +37,17 @@ class Settings(BaseSettings):
     def strip_database_url(cls, value: str) -> str:
         return value.strip()
 
-    @field_validator("openrouter_api_key", "openrouter_base_url", "openrouter_model")
+    @field_validator(
+        "synthesis_provider",
+        "deepseek_api_key",
+        "deepseek_base_url",
+        "deepseek_model",
+        "openrouter_api_key",
+        "openrouter_base_url",
+        "openrouter_model",
+    )
     @classmethod
-    def strip_openrouter_fields(cls, value: str) -> str:
+    def strip_synthesis_fields(cls, value: str) -> str:
         return value.strip()
 
 

@@ -138,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
     show_parser.set_defaults(func=_cmd_show_cluster)
 
     synthesize_parser = subparsers.add_parser(
-        "synthesize", help="Rewrite ready_for_llm clusters via OpenRouter"
+        "synthesize", help="Rewrite ready_for_llm clusters via LLM synthesis"
     )
     synthesize_parser.add_argument("--limit", type=int, default=None)
     synthesize_parser.set_defaults(func=_cmd_synthesize)

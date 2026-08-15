@@ -1,1 +1,1 @@
-"""Cluster synthesis via OpenRouter."""
+"""Cluster synthesis via DeepSeek or OpenRouter."""

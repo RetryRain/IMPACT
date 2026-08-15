@@ -46,7 +46,11 @@ Environment variables: copy [`.env.example`](.env.example) to `.env` in this dir
 | `BATCH_SIZE` | `32` |
 | `CLUSTER_COOLDOWN_MINUTES` | `10` |
 | `SYNTHESIS_DATABASE_URL` | placeholder Neon publish DB |
-| `OPENROUTER_API_KEY` | required for synthesis |
+| `SYNTHESIS_PROVIDER` | `deepseek` (or `openrouter`) |
+| `DEEPSEEK_API_KEY` | required when provider is `deepseek` |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` |
+| `DEEPSEEK_MODEL` | `deepseek-chat` |
+| `OPENROUTER_API_KEY` | required when provider is `openrouter` |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_MODEL` | `google/gemini-2.5-flash` |
 | `SYNTHESIS_BODY_CHAR_LIMIT` | `800` |
@@ -69,16 +73,16 @@ python -m clustering.cli assign --limit 500
 # Inspect a cluster (LLM handoff payload)
 python -m clustering.cli show-cluster <cluster_id>
 
-# Synthesize ready_for_llm clusters via OpenRouter
+# Synthesize ready_for_llm clusters (DeepSeek by default)
 python -m clustering.cli synthesize --limit 10
 ```
 
-## Synthesis (OpenRouter)
+## Synthesis (DeepSeek or OpenRouter)
 
 After clustering marks story groups `ready_for_llm`, run the synthesis worker against a **separate Neon database**:
 
 1. Install synthesis extras: `pip install -e "./clustering[synthesis]"` (or `[dev,synthesis]` for local dev).
-2. Set `OPENROUTER_API_KEY`, `SYNTHESIS_DATABASE_URL`, and optionally `OPENROUTER_MODEL` in `.env`.
+2. Set `SYNTHESIS_DATABASE_URL` and provider credentials in `.env` (see below).
 3. Run publish migrations:
 
 ```bash
@@ -92,12 +96,30 @@ alembic -c alembic_publish.ini upgrade head
 python -m clustering.cli synthesize --limit 10
 ```
 
-The worker sends one OpenRouter request per cluster. Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
+The worker sends one LLM request per cluster (DeepSeek direct API by default). Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
 
 - LLM fields: `title`, `summary`, `body`, `scope` (verified), `priority` (1–100 editorial score), `slug` (stable SEO URL segment)
 - Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `published_at`, `scraped_at`
 - Provenance: `source_urls`, `sources`
-- `synthesized_at` — timestamp when the OpenRouter response was received
+- `synthesized_at` — timestamp when the LLM response was received
+
+### Provider switch
+
+Default is direct DeepSeek (`SYNTHESIS_PROVIDER=deepseek`):
+
+```env
+SYNTHESIS_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+To use OpenRouter again (one env change):
+
+```env
+SYNTHESIS_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=google/gemini-2.5-flash
+```
 
 The LLM verifies the crawler-assigned scope (`assigned_scope` in the payload) and returns one of `India`, `Tamil Nadu`, or `World`. Priority is scored from Tamil Nadu impact only — not from article count or outlet volume.
 

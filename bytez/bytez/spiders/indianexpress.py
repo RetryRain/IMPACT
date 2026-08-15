@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
+from html import unescape
+import re
 from typing import Any, ClassVar
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 
 import scrapy
 from scrapy.selector import Selector
@@ -45,7 +47,9 @@ class IndianExpressSpider(scrapy.Spider):
     PAGE_SIZE: ClassVar[int] = 8
     SOURCE: ClassVar[str] = "The New Indian Express"
     LANGUAGE: ClassVar[str] = "en"
-    IMAGE_CDN_URL: ClassVar[str] = "https://d3lzcn6mbbadaf.cloudfront.net/"
+    CF_IMAGES_HOST: ClassVar[str] = "cf-images.assettype.com"
+    CF_IMAGES_BASE: ClassVar[str] = "https://cf-images.assettype.com/"
+    CF_IMAGE_WIDTH: ClassVar[int] = 1200
 
     MAX_TOTAL_ARTICLES: ClassVar[int] = 1000
     OLD_ARTICLE_MAX_AGE: ClassVar[timedelta] = timedelta(days=1)
@@ -173,17 +177,111 @@ class IndianExpressSpider(scrapy.Spider):
 
         return "\n".join(paragraphs)
 
+    @staticmethod
+    def _absolute_https_url(url: str) -> str:
+        stripped = url.strip()
+        if stripped.startswith("//"):
+            return f"https:{stripped}"
+        return stripped
+
+    @classmethod
+    def _is_cf_images_url(cls, url: str) -> bool:
+        return cls.CF_IMAGES_HOST in cls._absolute_https_url(url)
+
+    @classmethod
+    def _parse_srcset(cls, srcset: str) -> str | None:
+        decoded = unescape(srcset.strip())
+        candidates: list[tuple[int, str]] = []
+
+        for part in decoded.split(","):
+            piece = part.strip()
+            if not piece:
+                continue
+
+            match = re.search(r"\s+(\d+)(w|x)\s*$", piece)
+            if match:
+                width = int(match.group(1))
+                if match.group(2) == "x":
+                    width *= 1000
+                url = piece[: match.start()].strip()
+            else:
+                width = 0
+                url = piece
+
+            if url:
+                candidates.append((width, cls._absolute_https_url(url)))
+
+        if not candidates:
+            return None
+
+        return max(candidates, key=lambda candidate: candidate[0])[1]
+
+    @classmethod
+    def _upgrade_cf_image_url(cls, url: str) -> str | None:
+        if not url or not url.strip():
+            return None
+
+        candidate = url.strip()
+        if "," in candidate and "w" in candidate:
+            parsed = cls._parse_srcset(candidate)
+            if parsed:
+                candidate = parsed
+
+        normalized = cls._absolute_https_url(candidate)
+        if not cls._is_cf_images_url(normalized):
+            return normalized
+
+        parsed = urlparse(normalized)
+        params = dict(parse_qsl(parsed.query))
+        params["w"] = str(cls.CF_IMAGE_WIDTH)
+        params.setdefault("auto", "format,compress")
+        params.setdefault("fit", "max")
+        query = urlencode(params)
+        return urlunparse(
+            (parsed.scheme, parsed.netloc, parsed.path, "", query, "")
+        )
+
+    @classmethod
+    def _cf_images_url_from_s3_key(cls, key: str) -> str:
+        encoded_path = quote(key.lstrip("/"), safe="")
+        query = urlencode(
+            {
+                "w": cls.CF_IMAGE_WIDTH,
+                "auto": "format,compress",
+                "fit": "max",
+            }
+        )
+        return f"{cls.CF_IMAGES_BASE}{encoded_path}?{query}"
+
     @classmethod
     def _image_url(cls, story: dict[str, object]) -> str | None:
         metadata = story.get("hero-image-metadata")
+        original_url: str | None = None
         if isinstance(metadata, dict):
-            original_url = metadata.get("original-url")
-            if isinstance(original_url, str) and original_url:
-                return original_url
+            raw = metadata.get("original-url")
+            if isinstance(raw, str) and raw.strip():
+                original_url = raw.strip()
 
-        key = story.get("hero-image-s3-key")
-        if isinstance(key, str) and key:
-            return f"{cls.IMAGE_CDN_URL}{key.lstrip('/')}"
+        s3_key = story.get("hero-image-s3-key")
+        key = s3_key.strip() if isinstance(s3_key, str) and s3_key.strip() else None
+
+        if original_url:
+            absolute = cls._absolute_https_url(original_url)
+            if cls._is_cf_images_url(absolute) or (
+                "," in original_url and "w" in original_url
+            ):
+                return cls._upgrade_cf_image_url(original_url)
+            if "d3lzcn6mbbadaf.cloudfront.net" in absolute:
+                if key:
+                    return cls._cf_images_url_from_s3_key(key)
+                return None
+
+        if key:
+            return cls._cf_images_url_from_s3_key(key)
+
+        if original_url:
+            return cls._absolute_https_url(original_url)
+
         return None
 
     @classmethod
