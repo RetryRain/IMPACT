@@ -23,6 +23,7 @@ class SynthesizedStory(PublishBase):
     )
 
     title: Mapped[str] = mapped_column(String(1024), nullable=False)
+    slug: Mapped[str] = mapped_column(String(256), nullable=False, unique=True, index=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
 

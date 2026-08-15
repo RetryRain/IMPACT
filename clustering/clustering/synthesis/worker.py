@@ -16,6 +16,7 @@ from clustering.db.session import get_session
 from clustering.log import info
 from clustering.synthesis.openrouter_client import OpenRouterClient, SynthesisError
 from clustering.synthesis.prompt import SynthesisResult
+from clustering.slug import make_story_slug
 from clustering.timezone_util import IST
 
 
@@ -49,9 +50,12 @@ def build_synthesized_story(
         {article.source for article in articles if article.source}
     )
 
+    story_id = uuid.uuid4()
     return SynthesizedStory(
+        id=story_id,
         cluster_id=cluster.id,
         title=result.title or "",
+        slug=make_story_slug(result.title or "story", story_id),
         summary=result.summary,
         body=result.body,
         url=representative.url,

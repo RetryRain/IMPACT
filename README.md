@@ -8,6 +8,7 @@ News scraping, semantic clustering, and (future) LLM synthesis for Indian publis
 |--------|---------|
 | [`bytez/`](bytez/) | Scrapy spiders (Hindu, TOI, Indian Express) |
 | [`clustering/`](clustering/) | Embed + cluster articles into story groups |
+| [`web/`](web/) | Public news PWA (Next.js reader) |
 | [`docker-compose.yml`](docker-compose.yml) | Local Postgres + pgvector for development |
 
 ## Operations guide

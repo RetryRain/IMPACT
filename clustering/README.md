@@ -94,7 +94,7 @@ python -m clustering.cli synthesize --limit 10
 
 The worker sends one OpenRouter request per cluster. Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
 
-- LLM fields: `title`, `summary`, `body`, `scope` (verified), `priority` (1–100 editorial score)
+- LLM fields: `title`, `summary`, `body`, `scope` (verified), `priority` (1–100 editorial score), `slug` (stable SEO URL segment)
 - Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `published_at`, `scraped_at`
 - Provenance: `source_urls`, `sources`
 - `synthesized_at` — timestamp when the OpenRouter response was received

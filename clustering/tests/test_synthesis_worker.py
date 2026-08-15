@@ -104,6 +104,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     )
 
     assert story.title == "Rewritten title"
+    assert story.slug
     assert story.summary == "Rewritten summary"
     assert story.body == "Rewritten body"
     assert story.url == article.url
