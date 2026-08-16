@@ -146,7 +146,9 @@ export default async function ArticlePage({ params }: PageProps) {
 
         {publishers.length > 0 && (
           <section className="mt-10 border-t border-border pt-6">
-            <h2 className="font-serif text-lg font-bold mb-4">Sources</h2>
+            <p className="text-xs font-sans uppercase tracking-wide text-muted mb-3">
+              From
+            </p>
             <PublisherLogos
               publishers={publishers}
               linked

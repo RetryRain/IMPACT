@@ -36,7 +36,7 @@ export default function AboutPage() {
             money, your safety, your community. We read the trusted publishers.
             We cut the celebrity chatter, the political posturing, and the
             clickbait. We give you <strong className="text-ink">one clear story</strong> on
-            what actually matters in Tamil Nadu.
+            what actually matters in Tamil Nadu. It&apos;s free. Always.
           </p>
           <div className="mt-10">
             <Link
@@ -72,6 +72,28 @@ export default function AboutPage() {
               drama with no local impact. Just signal.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* What you get */}
+      <section className="py-16 sm:py-24 border-t border-border">
+        <div className="mx-auto max-w-article">
+          <SectionLabel>What you get</SectionLabel>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-ink tracking-tight leading-tight mb-8">
+            Free. No account. No paywall.
+          </h2>
+          <ul className="font-sans text-lg text-muted leading-relaxed space-y-4 list-none">
+            <li>
+              <strong className="text-ink">One story per event</strong> — not
+              five copies of the same headline.
+            </li>
+            <li>
+              Ranked for <em>your</em> life in Tamil Nadu, not for clicks.
+            </li>
+            <li>
+              Install it as an app from your browser if you want — still free.
+            </li>
+          </ul>
         </div>
       </section>
 
@@ -138,7 +160,7 @@ export default function AboutPage() {
             The Indian Express, and The Times of India. We cite facts from their
             coverage — we don&apos;t speak for them, and we never just copy-paste.
           </p>
-          <PublisherLogos />
+          <PublisherLogos variant="prominent" />
           <p className="mt-10 font-sans text-sm text-muted">
             Logos shown for identification only. {SITE_NAME} is independent and
             not affiliated with these publishers.
@@ -156,7 +178,7 @@ export default function AboutPage() {
             Get your feed of stories ranked by relevance to <em>your</em> Tamil
             Nadu — covering India, state, and world scopes, updated throughout
             the day. No noise. No duplicates. No bullshit. Just what affects{" "}
-            <em>you</em>.
+            <em>you</em>. It&apos;s free. Always.
           </p>
           <Link
             href="/"

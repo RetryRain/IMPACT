@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 
 export function FeedScrollRestore({ children }: { children: ReactNode }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
     }
@@ -15,11 +15,7 @@ export function FeedScrollRestore({ children }: { children: ReactNode }) {
     const y = Number.parseInt(saved, 10);
     if (Number.isNaN(y)) return;
 
-    requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        window.scrollTo(0, y);
-      }, 50);
-    });
+    window.scrollTo({ top: y, left: 0, behavior: "instant" });
   }, []);
 
   return children;

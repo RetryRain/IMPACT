@@ -31,7 +31,8 @@ export default async function HomePage({ searchParams }: PageProps) {
         </h1>
         <p className="mt-3 font-sans text-muted leading-relaxed">
           TNforME doesn&apos;t give you more headlines. It gives you a clearer
-          picture of what affects <em>your</em> life in Tamil Nadu.
+          picture of what affects <em>your</em> life in Tamil Nadu. Free. No
+          account. No extra noise.
         </p>
       </header>
       <FeedList stories={feed.stories} />

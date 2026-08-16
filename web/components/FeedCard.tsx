@@ -2,9 +2,9 @@ import Image from "next/image";
 import type { Story } from "@/lib/schema";
 import { scopeToPath, storyPath, scopeChipClass } from "@/lib/scope";
 import { truncate } from "@/lib/format";
-import { SITE_NAME } from "@/lib/site";
 import { FeedCardLink } from "./FeedCardLink";
 import { RelativeTime } from "./RelativeTime";
+import { StreamMark } from "./StreamMark";
 
 export function FeedCard({ story }: { story: Story }) {
   const scopePath = scopeToPath(story.scope);
@@ -45,8 +45,11 @@ export function FeedCard({ story }: { story: Story }) {
               sizes="200px"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-accent-ink font-sans px-4 text-center">
-              {SITE_NAME}
+            <div className="absolute inset-0 flex items-center justify-center px-4">
+              <StreamMark
+                className="h-12 w-12 opacity-50"
+                idPrefix={`feed-${story.id}`}
+              />
             </div>
           )}
         </div>

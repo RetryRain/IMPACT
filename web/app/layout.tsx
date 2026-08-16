@@ -31,6 +31,10 @@ export const metadata: Metadata = {
     "TNforME gives you one clear story on what actually affects your life in Tamil Nadu — not every headline.",
   manifest: "/manifest.webmanifest",
   icons: {
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: {
