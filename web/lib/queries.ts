@@ -152,6 +152,15 @@ export async function getRecentNewsStories(withinHours = 48): Promise<Story[]> {
     .limit(500);
 }
 
+export async function getCanonicalStoryIds(): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ id: synthesizedStories.id })
+    .from(synthesizedStories)
+    .where(isNull(synthesizedStories.canonicalStoryId));
+  return rows.map((row) => row.id);
+}
+
 export async function resolveCanonicalStory(story: Story): Promise<Story> {
   if (!story.canonicalStoryId) return story;
   const canonical = await getStoryById(story.canonicalStoryId);

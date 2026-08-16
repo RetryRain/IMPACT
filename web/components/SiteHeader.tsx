@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SCOPE_LABELS, SCOPE_PATHS } from "@/lib/scope";
+import { SCOPE_LABELS, SCOPE_PATHS, scopeNavClass } from "@/lib/scope";
 import { SITE_NAME } from "@/lib/site";
 
 export function SiteHeader() {
@@ -14,10 +14,10 @@ export function SiteHeader() {
       <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
         <Link
           href="/"
-          className={`font-serif text-2xl font-bold text-ink tracking-tight border-b-2 pb-0.5 ${
+          className={`font-serif text-2xl font-bold text-accent tracking-tight border-b-2 pb-0.5 ${
             homeActive
               ? "border-accent"
-              : "border-transparent hover:border-border"
+              : "border-transparent hover:border-accent/40"
           }`}
         >
           {SITE_NAME}
@@ -31,11 +31,7 @@ export function SiteHeader() {
                 <Link
                   key={path}
                   href={`/${path}`}
-                  className={`px-3 py-1.5 rounded-full transition-colors border-b-2 ${
-                    active
-                      ? "text-ink border-accent"
-                      : "text-muted border-transparent hover:text-ink hover:bg-border/60"
-                  }`}
+                  className={scopeNavClass(path, active)}
                 >
                   {SCOPE_LABELS[path]}
                 </Link>

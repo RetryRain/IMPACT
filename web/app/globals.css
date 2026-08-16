@@ -10,6 +10,15 @@
   body {
     @apply bg-paper text-ink;
   }
+
+  ::selection {
+    @apply bg-accent-soft text-ink;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
+  }
 }
 
 @layer utilities {

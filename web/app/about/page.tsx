@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="font-sans text-xs font-medium uppercase tracking-[0.2em] text-muted mb-6">
+    <p className="font-sans text-xs font-medium uppercase tracking-[0.2em] text-accent-ink mb-6">
       {children}
     </p>
   );
@@ -29,6 +29,7 @@ export default function AboutPage() {
             <br />
             Not your noise.
           </h1>
+          <div className="mx-auto mt-6 h-[3px] w-24 bg-accent rounded-full" aria-hidden="true" />
           <p className="mt-8 font-sans text-lg sm:text-xl text-muted leading-relaxed">
             {SITE_NAME} doesn&apos;t give you more news. It gives you a clearer
             understanding of what affects <em>your</em> life — your work, your

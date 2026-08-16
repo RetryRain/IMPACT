@@ -14,6 +14,7 @@ import {
   isScopePath,
   scopeToPath,
   storyPath,
+  scopeChipClass,
   type ScopePath,
 } from "@/lib/scope";
 import { resolveStoryPublishers } from "@/lib/publishers";
@@ -103,7 +104,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-4">
-            <span className="rounded-full bg-border/80 px-2 py-0.5 text-ink">
+            <span className={scopeChipClass(story.scope)}>
               {story.scope}
             </span>
             {story.publishedAt && (

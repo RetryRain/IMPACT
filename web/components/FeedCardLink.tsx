@@ -33,7 +33,7 @@ export function FeedCardLink({ href, storyId, children }: FeedCardLinkProps) {
       href={href}
       onClick={saveFeedScroll}
       className={`block gap-4 sm:grid sm:grid-cols-[1fr_200px] ${
-        read ? "[&_h2]:text-[#551a8b]" : ""
+        read ? "[&_h2]:text-visited" : ""
       }`}
     >
       {children}

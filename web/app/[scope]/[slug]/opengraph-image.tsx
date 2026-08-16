@@ -53,7 +53,7 @@ export default async function OgImage({ params }: Props) {
         <div
           style={{
             fontSize: 32,
-            color: "#c45c26",
+            color: "#3d7a5c",
             fontWeight: 600,
           }}
         >

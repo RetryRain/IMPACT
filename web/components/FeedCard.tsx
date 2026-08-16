@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { Story } from "@/lib/schema";
-import { scopeToPath, storyPath } from "@/lib/scope";
+import { scopeToPath, storyPath, scopeChipClass } from "@/lib/scope";
 import { truncate } from "@/lib/format";
 import { SITE_NAME } from "@/lib/site";
 import { FeedCardLink } from "./FeedCardLink";
@@ -18,7 +18,7 @@ export function FeedCard({ story }: { story: Story }) {
       <FeedCardLink href={href} storyId={story.id}>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-2">
-            <span className="rounded-full bg-border/80 px-2 py-0.5 text-ink">
+            <span className={scopeChipClass(story.scope)}>
               {story.scope}
             </span>
             <RelativeTime date={story.publishedAt} />
@@ -35,7 +35,7 @@ export function FeedCard({ story }: { story: Story }) {
             </p>
           )}
         </div>
-        <div className="mt-4 sm:mt-0 relative aspect-[16/10] rounded-lg overflow-hidden bg-gradient-to-br from-border to-paper">
+        <div className="mt-4 sm:mt-0 relative aspect-[16/10] rounded-lg overflow-hidden bg-gradient-to-br from-accent-soft to-paper">
           {story.image ? (
             <Image
               src={story.image}
@@ -45,7 +45,7 @@ export function FeedCard({ story }: { story: Story }) {
               sizes="200px"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted font-sans px-4 text-center">
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-accent-ink font-sans px-4 text-center">
               {SITE_NAME}
             </div>
           )}

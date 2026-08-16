@@ -33,3 +33,37 @@ export function isScopePath(path: string): path is ScopePath {
 export function storyPath(scopePath: ScopePath, slug: string): string {
   return `/${scopePath}/${slug}`;
 }
+
+const SCOPE_CHIP_STYLES: Record<string, { bg: string; text: string }> = {
+  "Tamil Nadu": { bg: "bg-accent-soft", text: "text-accent-ink" },
+  India: { bg: "bg-scope-india-bg", text: "text-scope-india-text" },
+  World: { bg: "bg-scope-world-bg", text: "text-scope-world-text" },
+};
+
+/** Scope chip styles for feed cards and article headers. */
+export function scopeChipClass(scope: string | null | undefined): string {
+  const base = "rounded-full px-2 py-0.5 text-xs font-sans";
+  const style = scope ? SCOPE_CHIP_STYLES[scope] : null;
+  if (!style) return `${base} bg-border/80 text-ink`;
+  return `${base} ${style.bg} ${style.text}`;
+}
+
+/** Subtitle for scope feed headers — avoids repeating the scope name in the line. */
+export function scopeFeedSubtitle(scopePath: ScopePath): string {
+  switch (scopePath) {
+    case "tamil-nadu":
+      return "Your state feed — ranked for what affects your daily life, not headline volume.";
+    case "india":
+      return "National news filtered for how it lands in Tamil Nadu — not every India story.";
+    case "world":
+      return "Global events that ripple into your life here — not every world headline.";
+  }
+}
+
+/** Active nav pill styles per scope path. */
+export function scopeNavClass(path: ScopePath, active: boolean): string {
+  const base = "px-3 py-1.5 rounded-full transition-colors";
+  if (!active) return `${base} text-muted hover:text-ink hover:bg-border/60`;
+  const style = SCOPE_CHIP_STYLES[SCOPE_LABELS[path]];
+  return `${base} ${style.bg} ${style.text}`;
+}

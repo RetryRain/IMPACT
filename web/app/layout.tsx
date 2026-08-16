@@ -4,6 +4,8 @@ import { Inter, Lora } from "next/font/google";
 import { SerwistProvider } from "@serwist/next/react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { InstallBanner } from "@/components/InstallBanner";
+import { AllReadEgg } from "@/components/AllReadEgg";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -28,6 +30,9 @@ export const metadata: Metadata = {
   description:
     "TNforME gives you one clear story on what actually affects your life in Tamil Nadu — not every headline.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -54,8 +59,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       >
         <SerwistProvider swUrl="/sw.js">
           <SiteHeader />
+          <InstallBanner />
           <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
           <SiteFooter />
+          <AllReadEgg />
         </SerwistProvider>
       </body>
     </html>

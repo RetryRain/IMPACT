@@ -6,6 +6,7 @@ import { getFeedStories } from "@/lib/queries";
 import {
   isScopePath,
   SCOPE_LABELS,
+  scopeFeedSubtitle,
   type ScopePath,
 } from "@/lib/scope";
 import { absoluteUrl } from "@/lib/site";
@@ -51,8 +52,7 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
           {label}
         </h1>
         <p className="mt-3 font-sans text-muted leading-relaxed">
-          Signal for <em>your</em> Tamil Nadu — not every headline about{" "}
-          {label}.
+          {scopeFeedSubtitle(scope as ScopePath)}
         </p>
       </header>
       <FeedList stories={feed.stories} />
