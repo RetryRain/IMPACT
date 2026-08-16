@@ -4,6 +4,7 @@ import { Inter, Lora } from "next/font/google";
 import { SerwistProvider } from "@serwist/next/react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { InstallBanner } from "@/components/InstallBanner";
 import { AllReadEgg } from "@/components/AllReadEgg";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
@@ -64,8 +65,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SerwistProvider swUrl="/sw.js">
           <SiteHeader />
           <InstallBanner />
-          <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+          <main className="mx-auto max-w-5xl px-4 py-8 pb-tab-bar">{children}</main>
           <SiteFooter />
+          <MobileTabBar />
           <AllReadEgg />
         </SerwistProvider>
       </body>
