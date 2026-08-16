@@ -174,6 +174,12 @@ class ChatCompletionsClient:
                     f"{self.provider_name} request failed: {exc}"
                 ) from exc
 
+            if (
+                400 <= response.status_code < 500
+                and response.status_code != 429
+            ):
+                self._raise_for_status(response)
+
             if response.status_code in {429, 500, 502, 503, 504} and attempt == 0:
                 time.sleep(1.0)
                 continue

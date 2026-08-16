@@ -55,6 +55,8 @@ Environment variables: copy [`.env.example`](.env.example) to `.env` in this dir
 | `OPENROUTER_MODEL` | `google/gemini-2.5-flash` |
 | `SYNTHESIS_BODY_CHAR_LIMIT` | `800` |
 | `SYNTHESIS_TIMEOUT_SECONDS` | `120` |
+| `SYNTHESIS_CONCURRENCY` | `3` (parallel LLM calls per run) |
+| `SYNTHESIS_LOG_PATH` | `logs/synthesis.jsonl` (JSONL audit log per run) |
 
 ## CLI
 
@@ -95,6 +97,11 @@ alembic -c alembic_publish.ini upgrade head
 ```bash
 python -m clustering.cli synthesize --limit 10
 ```
+
+Each run appends to `logs/synthesis.jsonl` (or `SYNTHESIS_LOG_PATH`). One JSON object per line:
+
+- **`type: cluster`** — per-cluster outcome (`rewritten`, `dropped`, `failed`, or `skipped_existing`), LLM fields, sources, timing
+- **`type: summary`** — run totals and duration (last line of the run)
 
 The worker sends one LLM request per cluster (DeepSeek direct API by default). Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
 

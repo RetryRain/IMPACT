@@ -1,8 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { Story } from "@/lib/schema";
 import { scopeToPath, storyPath } from "@/lib/scope";
-import { formatRelativeIst, truncate } from "@/lib/format";
+import { truncate } from "@/lib/format";
+import { FeedCardLink } from "./FeedCardLink";
+import { RelativeTime } from "./RelativeTime";
 
 export function FeedCard({ story }: { story: Story }) {
   const scopePath = scopeToPath(story.scope);
@@ -13,15 +14,13 @@ export function FeedCard({ story }: { story: Story }) {
 
   return (
     <article className="group border-b border-border py-6 first:pt-0">
-      <Link href={href} className="block gap-4 sm:grid sm:grid-cols-[1fr_200px]">
+      <FeedCardLink href={href} storyId={story.id}>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-2">
             <span className="rounded-full bg-border/80 px-2 py-0.5 text-ink">
               {story.scope}
             </span>
-            <time dateTime={story.publishedAt?.toISOString() ?? undefined}>
-              {formatRelativeIst(story.publishedAt)}
-            </time>
+            <RelativeTime date={story.publishedAt} />
             {sourceCount > 0 && (
               <span>{sourceCount} source{sourceCount !== 1 ? "s" : ""}</span>
             )}
@@ -50,7 +49,7 @@ export function FeedCard({ story }: { story: Story }) {
             </div>
           )}
         </div>
-      </Link>
+      </FeedCardLink>
     </article>
   );
 }

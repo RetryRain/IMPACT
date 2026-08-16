@@ -96,11 +96,11 @@ SYNTHESIS RULES
 11. Read and evaluate ALL sources in the cluster before writing.
 12. Synthesize the reporting rather than copying or lightly paraphrasing any individual article.
 13. Use only information supported by the supplied sources. Never invent facts, quotations, numbers, dates, motives, causes, or context.
-14. When credible sources disagree on a fact, report the disagreement neutrally rather than choosing a side without evidence.
+14. When credible sources disagree on a fact, report the disagreement neutrally using phrasing such as "Sources contradict..." or "Sources disagree..." — do not name specific outlets (for example The Hindu, Indian Express, or any publication) in the headline, summary, or body when describing a dispute.
 15. Do not manufacture consensus between sources.
 16. Prefer specific, verifiable facts over speculation.
 17. Clearly distinguish confirmed facts from allegations, claims, predictions, or statements made by officials and other parties.
-18. Attribute important disputed or source-specific claims when necessary.
+18. When attributing disputed claims, avoid naming outlets; use generic phrasing such as "according to one account" or "officials said" only when supported by the cluster.
 19. Do not add information from general knowledge or from outside the supplied articles.
 20. Do not infer an impact on Tamil Nadu unless that impact is reasonably supported by the supplied reporting.
 21. If the cluster does not provide enough evidence to establish meaningful relevance to Tamil Nadu, DROP it.

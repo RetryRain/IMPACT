@@ -1,4 +1,5 @@
 import { FeedCard } from "./FeedCard";
+import { FeedScrollRestore } from "./FeedScrollRestore";
 import type { Story } from "@/lib/schema";
 
 export function FeedList({ stories }: { stories: Story[] }) {
@@ -11,10 +12,12 @@ export function FeedList({ stories }: { stories: Story[] }) {
   }
 
   return (
-    <div>
-      {stories.map((story) => (
-        <FeedCard key={story.id} story={story} />
-      ))}
-    </div>
+    <FeedScrollRestore>
+      <div>
+        {stories.map((story) => (
+          <FeedCard key={story.id} story={story} />
+        ))}
+      </div>
+    </FeedScrollRestore>
   );
 }

@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     openrouter_model: str = "google/gemini-2.5-flash"
     synthesis_body_char_limit: int = 800
     synthesis_timeout_seconds: int = 120
+    synthesis_concurrency: int = 3
+    synthesis_log_path: str = "logs/synthesis.jsonl"
 
     @field_validator("database_url", "synthesis_database_url")
     @classmethod
@@ -45,6 +47,7 @@ class Settings(BaseSettings):
         "openrouter_api_key",
         "openrouter_base_url",
         "openrouter_model",
+        "synthesis_log_path",
     )
     @classmethod
     def strip_synthesis_fields(cls, value: str) -> str:

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FeedbackButton } from "./FeedbackButton";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
 
 export function SiteFooter() {
@@ -10,7 +11,7 @@ export function SiteFooter() {
           matter to people in Tamil Nadu — not everything in the news, only what
           could affect your community, work, money, or government.
         </p>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-center">
           <Link href="/rss.xml" className="hover:text-accent underline-offset-2 hover:underline">
             RSS
           </Link>
@@ -20,6 +21,7 @@ export function SiteFooter() {
           >
             Sitemap
           </a>
+          <FeedbackButton />
         </div>
         <p className="text-xs">
           Install this site from your browser menu to use {SITE_NAME} as an app.

@@ -80,6 +80,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
         source="TOI",
         published_at=datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc),
     )
+    other.tags = ["economy"]
     cluster = StoryCluster(
         id=uuid.uuid4(),
         representative_article_id=article.id,
@@ -110,7 +111,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     assert story.url == article.url
     assert story.author == article.author
     assert story.image == article.image
-    assert story.tags == article.tags
+    assert story.tags == ["politics", "economy"]
     assert story.language == article.language
     assert story.scope == "Tamil Nadu"
     assert story.priority == 82

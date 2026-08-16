@@ -1,14 +1,14 @@
 import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ArticleBackButton } from "@/components/ArticleBackButton";
 import { ArticleBody } from "@/components/ArticleBody";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { MarkStoryRead } from "@/components/MarkStoryRead";
 import { NewsArticleJsonLd } from "@/components/NewsArticleJsonLd";
-import { RelatedStories } from "@/components/RelatedStories";
-import { formatIstDate } from "@/lib/format";
-import {
-  getRelatedStories,
-  getStoryBySlug,
-} from "@/lib/queries";
+import { RelativeTime } from "@/components/RelativeTime";
+import { storyKeywords } from "@/lib/keywords";
+import { getStoryBySlug } from "@/lib/queries";
 import {
   isScopePath,
   storyPath,
@@ -34,10 +34,12 @@ export async function generateMetadata({
 
   const url = absoluteUrl(storyPath(scope as ScopePath, slug));
   const description = story.summary ?? story.title;
+  const keywords = storyKeywords(story.tags);
 
   return {
     title: story.title,
     description,
+    keywords,
     alternates: { canonical: url },
     openGraph: {
       type: "article",
@@ -69,23 +71,26 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  const related = await getRelatedStories(story);
   const sources = story.sources ?? [];
   const sourceUrls = story.sourceUrls ?? [];
+  const pageUrl = absoluteUrl(storyPath(scope as ScopePath, slug));
 
   return (
     <>
       <NewsArticleJsonLd story={story} />
-      <article className="max-w-article">
+      <MarkStoryRead id={story.id} slug={story.slug} />
+      <article className="max-w-article mx-auto">
+        <div className="mb-6">
+          <ArticleBackButton scopePath={scope} />
+        </div>
+
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-4">
             <span className="rounded-full bg-border/80 px-2 py-0.5 text-ink">
               {story.scope}
             </span>
             {story.publishedAt && (
-              <time dateTime={story.publishedAt.toISOString()}>
-                {formatIstDate(story.publishedAt)} IST
-              </time>
+              <RelativeTime date={story.publishedAt} />
             )}
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
@@ -118,6 +123,14 @@ export default async function ArticlePage({ params }: PageProps) {
 
         {story.body && <ArticleBody body={story.body} />}
 
+        {story.tags && story.tags.length > 0 && (
+          <ul className="sr-only">
+            {story.tags.map((tag) => (
+              <li key={tag}>{tag}</li>
+            ))}
+          </ul>
+        )}
+
         {sourceUrls.length > 0 && (
           <section className="mt-10 border-t border-border pt-6">
             <h2 className="font-serif text-lg font-bold mb-3">Sources</h2>
@@ -137,9 +150,12 @@ export default async function ArticlePage({ params }: PageProps) {
             </ul>
           </section>
         )}
-      </article>
 
-      <RelatedStories stories={related} />
+        <div className="mt-10 border-t border-border pt-6 flex flex-wrap items-center gap-4">
+          <ArticleBackButton scopePath={scope} />
+          <FeedbackButton pageUrl={pageUrl} />
+        </div>
+      </article>
     </>
   );
 }
