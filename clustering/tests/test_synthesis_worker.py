@@ -7,6 +7,7 @@ import pytest
 from clustering.db.models import Article, ClusterStatus, StoryCluster
 from clustering.synthesis.prompt import SynthesisResult
 from clustering.synthesis.worker import (
+    apply_synthesis_result_to_story,
     build_synthesized_story,
     resolve_representative_article,
     synthesize_clusters,
@@ -118,6 +119,56 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     assert story.source_urls == [article.url, other.url]
     assert story.sources == ["TOI", "The Hindu"]
     assert story.synthesized_at == synthesized_at
+
+
+def test_apply_synthesis_result_to_story_updates_existing_row():
+    article = _article(
+        url="https://example.com/a",
+        source="The Hindu",
+        published_at=datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc),
+    )
+    cluster = StoryCluster(
+        id=uuid.uuid4(),
+        representative_article_id=article.id,
+        scope="India",
+    )
+    synthesized_at = datetime(2026, 8, 5, 13, 0, tzinfo=timezone.utc)
+    existing = build_synthesized_story(
+        cluster=cluster,
+        articles=[article],
+        result=SynthesisResult(
+            action="rewrite",
+            drop_reason=None,
+            scope="India",
+            priority=50,
+            title="Old title",
+            summary="Old summary",
+            body="Old body",
+        ),
+        synthesized_at=synthesized_at,
+        story_id=uuid.uuid4(),
+    )
+    result = SynthesisResult(
+        action="rewrite",
+        drop_reason=None,
+        scope="Tamil Nadu",
+        priority=82,
+        title="Updated title",
+        summary="Updated summary",
+        body="Updated body",
+    )
+    updated = apply_synthesis_result_to_story(
+        existing,
+        cluster=cluster,
+        articles=[article],
+        result=result,
+        synthesized_at=synthesized_at,
+    )
+    assert updated.id == existing.id
+    assert updated.slug == existing.slug
+    assert updated.title == "Updated title"
+    assert updated.scope == "Tamil Nadu"
+    assert updated.priority == 82
 
 
 @patch("clustering.synthesis.worker.get_publish_session")

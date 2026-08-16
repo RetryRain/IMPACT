@@ -21,6 +21,7 @@ export const synthesizedStories = pgTable("synthesized_stories", {
   sources: jsonb("sources").$type<string[]>().notNull(),
   synthesizedAt: timestamp("synthesized_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  canonicalStoryId: uuid("canonical_story_id"),
 });
 
 export type Story = typeof synthesizedStories.$inferSelect;

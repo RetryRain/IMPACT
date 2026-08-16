@@ -63,6 +63,7 @@ def build_synthesized_story(
     articles: list[Article],
     result: SynthesisResult,
     synthesized_at: datetime,
+    story_id: uuid.UUID | None = None,
 ) -> SynthesizedStory:
     representative = resolve_representative_article(cluster, articles)
     source_urls = [article.url for article in articles if article.url]
@@ -70,12 +71,12 @@ def build_synthesized_story(
         {article.source for article in articles if article.source}
     )
 
-    story_id = uuid.uuid4()
+    resolved_id = story_id or uuid.uuid4()
     return SynthesizedStory(
-        id=story_id,
+        id=resolved_id,
         cluster_id=cluster.id,
         title=result.title or "",
-        slug=make_story_slug(result.title or "story", story_id),
+        slug=make_story_slug(result.title or "story", resolved_id),
         summary=result.summary,
         body=result.body,
         url=representative.url,
@@ -92,6 +93,37 @@ def build_synthesized_story(
         sources=sources,
         synthesized_at=synthesized_at,
     )
+
+
+def apply_synthesis_result_to_story(
+    existing: SynthesizedStory,
+    *,
+    cluster: StoryCluster,
+    articles: list[Article],
+    result: SynthesisResult,
+    synthesized_at: datetime,
+) -> SynthesizedStory:
+    representative = resolve_representative_article(cluster, articles)
+    source_urls = [article.url for article in articles if article.url]
+    sources = sorted({article.source for article in articles if article.source})
+
+    existing.title = result.title or ""
+    existing.summary = result.summary
+    existing.body = result.body
+    existing.url = representative.url
+    existing.source = representative.source
+    existing.author = representative.author
+    existing.image = representative.image
+    existing.tags = union_article_tags(articles)
+    existing.language = representative.language
+    existing.scope = result.scope
+    existing.priority = result.priority or 0
+    existing.published_at = representative.published_at
+    existing.scraped_at = representative.scraped_at
+    existing.source_urls = source_urls
+    existing.sources = sources
+    existing.synthesized_at = synthesized_at
+    return existing
 
 
 def _claim_ready_clusters(
@@ -281,6 +313,7 @@ def _process_cluster(
     )
 
     published_new = False
+    updated_existing = False
     with get_publish_session() as publish_session:
         existing = publish_session.scalar(
             select(SynthesizedStory).where(
@@ -290,6 +323,16 @@ def _process_cluster(
         if existing is None:
             publish_session.add(story)
             published_new = True
+        else:
+            apply_synthesis_result_to_story(
+                existing,
+                cluster=cluster,
+                articles=articles,
+                result=result,
+                synthesized_at=synthesized_at,
+            )
+            story = existing
+            updated_existing = True
         publish_session.commit()
 
     cluster.status = ClusterStatus.SYNTHESIZED
@@ -308,6 +351,7 @@ def _process_cluster(
             slug=story.slug,
             tags=story.tags,
             published_new=published_new,
+            updated_existing=updated_existing,
             duration_ms=duration_ms,
         )
     return "rewritten"

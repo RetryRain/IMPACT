@@ -10,7 +10,9 @@ from clustering.assigner import (
     get_cluster_payload,
     mark_ready_clusters,
 )
-from clustering.db.publish_session import check_publish_database_connection
+from clustering.canonical_collapse import collapse_duplicate_stories
+from clustering.event_merge import merge_event_clusters
+from clustering.db.publish_session import check_publish_database_connection, get_publish_session
 from clustering.db.session import check_database_connection, get_session
 from clustering.embedder import embed_articles
 from clustering.ingest import ingest_json_file
@@ -41,8 +43,9 @@ def _cmd_assign(args: argparse.Namespace) -> int:
     stage("Assign")
     with get_session() as session:
         stats = assign_articles(session, limit=args.limit)
+        merge_stats = merge_event_clusters(session)
         ready_stats = mark_ready_clusters(session, force=args.force_ready)
-    print(json.dumps({**stats, **ready_stats}, indent=2))
+    print(json.dumps({**stats, **merge_stats, **ready_stats}, indent=2))
     return 0
 
 
@@ -60,6 +63,7 @@ def _cmd_process(args: argparse.Namespace) -> int:
     stage("Assign")
     with get_session() as session:
         assign_stats = assign_articles(session, limit=args.limit)
+        merge_stats = merge_event_clusters(session)
         ready_stats = mark_ready_clusters(session, force=args.force_ready)
 
     info("\nDone.")
@@ -69,6 +73,7 @@ def _cmd_process(args: argparse.Namespace) -> int:
                 "ingest": ingest_stats,
                 "embed": embed_stats,
                 "assign": assign_stats,
+                "event_merge": merge_stats,
                 "ready": ready_stats,
             },
             indent=2,
@@ -91,6 +96,18 @@ def _cmd_synthesize(args: argparse.Namespace) -> int:
     check_publish_database_connection()
     stage("Synthesize")
     stats = synthesize_clusters(limit=args.limit)
+    print(json.dumps(stats, indent=2))
+    return 0
+
+
+def _cmd_collapse_stories(args: argparse.Namespace) -> int:
+    check_publish_database_connection()
+    stage("Collapse duplicate stories")
+    with get_publish_session() as publish_session:
+        stats = collapse_duplicate_stories(
+            publish_session,
+            re_synthesize=args.re_synthesize,
+        )
     print(json.dumps(stats, indent=2))
     return 0
 
@@ -142,6 +159,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     synthesize_parser.add_argument("--limit", type=int, default=None)
     synthesize_parser.set_defaults(func=_cmd_synthesize)
+
+    collapse_parser = subparsers.add_parser(
+        "collapse-stories",
+        help="Collapse duplicate published stories into canonical rows",
+    )
+    collapse_parser.add_argument(
+        "--re-synthesize",
+        action="store_true",
+        help="Merge source clusters and re-synthesize survivors",
+    )
+    collapse_parser.set_defaults(func=_cmd_collapse_stories)
 
     return parser
 

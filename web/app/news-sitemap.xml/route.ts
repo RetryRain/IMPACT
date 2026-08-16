@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRecentNewsStories } from "@/lib/queries";
 import { scopeToPath, storyPath } from "@/lib/scope";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
 export async function GET() {
   const stories = await getRecentNewsStories(48);
@@ -19,7 +19,7 @@ export async function GET() {
     <loc>${loc}</loc>
     <news:news>
       <news:publication>
-        <news:name>Bytez</news:name>
+        <news:name>${escapeXml(SITE_NAME)}</news:name>
         <news:language>en</news:language>
       </news:publication>
       <news:publication_date>${pubDate}</news:publication_date>

@@ -1,19 +1,22 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ArticleBackButton } from "@/components/ArticleBackButton";
 import { ArticleBody } from "@/components/ArticleBody";
 import { FeedbackButton } from "@/components/FeedbackButton";
+import { PublisherLogos } from "@/components/PublisherLogos";
 import { MarkStoryRead } from "@/components/MarkStoryRead";
 import { NewsArticleJsonLd } from "@/components/NewsArticleJsonLd";
 import { RelativeTime } from "@/components/RelativeTime";
 import { storyKeywords } from "@/lib/keywords";
-import { getStoryBySlug } from "@/lib/queries";
+import { getStoryById, getStoryBySlug } from "@/lib/queries";
 import {
   isScopePath,
+  scopeToPath,
   storyPath,
   type ScopePath,
 } from "@/lib/scope";
+import { resolveStoryPublishers } from "@/lib/publishers";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +26,27 @@ type PageProps = {
   params: Promise<{ scope: string; slug: string }>;
 };
 
+async function resolveArticleOrRedirect(scope: ScopePath, slug: string) {
+  const story = await getStoryBySlug(scope, slug);
+  if (!story) return null;
+  if (!story.canonicalStoryId) return story;
+
+  const canonical = await getStoryById(story.canonicalStoryId);
+  if (!canonical?.scope) return story;
+
+  const canonicalScope = scopeToPath(canonical.scope);
+  if (!canonicalScope || !canonical.slug) return story;
+
+  permanentRedirect(storyPath(canonicalScope, canonical.slug));
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { scope, slug } = await params;
   if (!isScopePath(scope)) return { title: "Not found" };
 
-  const story = await getStoryBySlug(scope as ScopePath, slug);
+  const story = await resolveArticleOrRedirect(scope as ScopePath, slug);
   if (!story) return { title: "Not found" };
 
   const url = absoluteUrl(storyPath(scope as ScopePath, slug));
@@ -66,13 +83,13 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  const story = await getStoryBySlug(scope as ScopePath, slug);
+  const story = await resolveArticleOrRedirect(scope as ScopePath, slug);
   if (!story) {
     notFound();
   }
 
-  const sources = story.sources ?? [];
   const sourceUrls = story.sourceUrls ?? [];
+  const publishers = resolveStoryPublishers(story.sources ?? [], sourceUrls);
   const pageUrl = absoluteUrl(storyPath(scope as ScopePath, slug));
 
   return (
@@ -101,11 +118,6 @@ export default async function ArticlePage({ params }: PageProps) {
               {story.summary}
             </p>
           )}
-          {sources.length > 0 && (
-            <p className="mt-4 font-sans text-sm text-muted">
-              Synthesized from {sources.join(", ")}
-            </p>
-          )}
         </header>
 
         {story.image && (
@@ -131,23 +143,14 @@ export default async function ArticlePage({ params }: PageProps) {
           </ul>
         )}
 
-        {sourceUrls.length > 0 && (
+        {publishers.length > 0 && (
           <section className="mt-10 border-t border-border pt-6">
-            <h2 className="font-serif text-lg font-bold mb-3">Sources</h2>
-            <ul className="space-y-2 font-sans text-sm">
-              {sourceUrls.map((url) => (
-                <li key={url}>
-                  <a
-                    href={url}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    className="text-accent hover:underline break-all"
-                  >
-                    {url}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <h2 className="font-serif text-lg font-bold mb-4">Sources</h2>
+            <PublisherLogos
+              publishers={publishers}
+              linked
+              className="justify-start"
+            />
           </section>
         )}
 

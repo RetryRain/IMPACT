@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -20,6 +20,12 @@ class SynthesizedStory(PublishBase):
     )
     cluster_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), unique=True, nullable=False, index=True
+    )
+    canonical_story_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("synthesized_stories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     title: Mapped[str] = mapped_column(String(1024), nullable=False)

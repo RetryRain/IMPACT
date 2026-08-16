@@ -34,14 +34,14 @@ def _effective_threshold(
     return settings.similarity_threshold
 
 
-def _find_nearest_neighbor(
+def _find_neighbor_matches(
     session: Session,
     article: Article,
     embedding: list[float],
-) -> tuple[_NeighborMatch | None, float]:
+) -> list[tuple[_NeighborMatch, float]]:
     settings = get_settings()
     if article.published_at is None:
-        return None, -1.0
+        return []
 
     window_start = article.published_at - timedelta(
         hours=settings.cluster_time_window_hours
@@ -67,18 +67,35 @@ def _find_nearest_neighbor(
         .where(Article.published_at >= window_start)
         .where(Article.published_at <= window_end)
         .order_by(distance_expr.asc())
-        .limit(1)
+        .limit(settings.assign_neighbor_k)
     )
 
-    row = session.execute(stmt).first()
-    if row is None:
-        return None, -1.0
+    matches: list[tuple[_NeighborMatch, float]] = []
+    for row in session.execute(stmt):
+        neighbor_id, source, cluster_id, similarity = row
+        matches.append(
+            (
+                _NeighborMatch(id=neighbor_id, source=source, cluster_id=cluster_id),
+                float(similarity),
+            )
+        )
+    return matches
 
-    neighbor_id, source, cluster_id, similarity = row
-    return (
-        _NeighborMatch(id=neighbor_id, source=source, cluster_id=cluster_id),
-        float(similarity),
-    )
+
+def _pick_cluster_neighbor(
+    article: Article,
+    neighbors: list[tuple[_NeighborMatch, float]],
+) -> tuple[_NeighborMatch | None, float]:
+    best_neighbor: _NeighborMatch | None = None
+    best_similarity = -1.0
+    for neighbor, similarity in neighbors:
+        if neighbor.cluster_id is None:
+            continue
+        threshold = _effective_threshold(article, neighbor, similarity)
+        if similarity >= threshold and similarity > best_similarity:
+            best_neighbor = neighbor
+            best_similarity = similarity
+    return best_neighbor, best_similarity
 
 
 def _create_cluster(session: Session, article: Article) -> StoryCluster:
@@ -140,24 +157,23 @@ def assign_articles(session: Session, *, limit: int | None = None) -> dict[str, 
             skipped += 1
             continue
 
-        neighbor, similarity = _find_nearest_neighbor(
+        neighbors = _find_neighbor_matches(
             session, article, article.embedding.embedding
         )
+        neighbor, similarity = _pick_cluster_neighbor(article, neighbors)
 
-        if neighbor is not None:
-            threshold = _effective_threshold(article, neighbor, similarity)
-            if similarity >= threshold and neighbor.cluster_id is not None:
-                cluster = session.get(StoryCluster, neighbor.cluster_id)
-                if cluster is not None:
-                    _assign_to_cluster(session, article, cluster)
-                    assigned_existing += 1
-                    if index % 50 == 0 or index == total:
-                        info(
-                            f"  assigned {index}/{total} "
-                            f"(joined={assigned_existing}, "
-                            f"new_clusters={created_clusters}, skipped={skipped})"
-                        )
-                    continue
+        if neighbor is not None and neighbor.cluster_id is not None:
+            cluster = session.get(StoryCluster, neighbor.cluster_id)
+            if cluster is not None:
+                _assign_to_cluster(session, article, cluster)
+                assigned_existing += 1
+                if index % 50 == 0 or index == total:
+                    info(
+                        f"  assigned {index}/{total} "
+                        f"(joined={assigned_existing}, "
+                        f"new_clusters={created_clusters}, skipped={skipped})"
+                    )
+                continue
 
         _create_cluster(session, article)
         created_clusters += 1

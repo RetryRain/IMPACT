@@ -1,6 +1,6 @@
 import type { Story } from "@/lib/schema";
 import { storyKeywords } from "@/lib/keywords";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, SITE_NAME } from "@/lib/site";
 import { scopeToPath, storyPath } from "@/lib/scope";
 
 type NewsArticleJsonLdProps = {
@@ -32,7 +32,7 @@ export function NewsArticleJsonLd({ story }: NewsArticleJsonLdProps) {
     mainEntityOfPage: url,
     publisher: {
       "@type": "Organization",
-      name: "Bytez",
+      name: SITE_NAME,
       url: absoluteUrl("/"),
     },
     url,

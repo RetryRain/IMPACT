@@ -28,7 +28,7 @@ export async function generateMetadata({
   const label = SCOPE_LABELS[scope];
   return {
     title: `${label} news`,
-    description: `Bytez stories about ${label}, ranked by relevance to Tamil Nadu readers.`,
+    description: `TNforME stories about ${label}, ranked by how much they could affect your life in Tamil Nadu.`,
     alternates: { canonical: absoluteUrl(`/${scope}`) },
   };
 }
@@ -51,8 +51,8 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
           {label}
         </h1>
         <p className="mt-3 font-sans text-muted leading-relaxed">
-          Stories primarily about {label}, ranked by impact for Tamil Nadu
-          readers.
+          Signal for <em>your</em> Tamil Nadu — not every headline about{" "}
+          {label}.
         </p>
       </header>
       <FeedList stories={feed.stories} />

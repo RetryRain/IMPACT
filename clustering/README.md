@@ -77,6 +77,10 @@ python -m clustering.cli show-cluster <cluster_id>
 
 # Synthesize ready_for_llm clusters (DeepSeek by default)
 python -m clustering.cli synthesize --limit 10
+
+# Collapse duplicate published stories already in the feed
+python -m clustering.cli collapse-stories
+python -m clustering.cli collapse-stories --re-synthesize
 ```
 
 ## Synthesis (DeepSeek or OpenRouter)
@@ -145,10 +149,11 @@ Filter by verified scope (e.g. `WHERE scope = 'Tamil Nadu'`).
 1. **Ingest** — Batch-lookup URLs by `content_hash`; skip rewriting unchanged article bodies, but still refresh `scraped_at` on every scrape. Content updates invalidate the article embedding.
 2. **Embed** — Only articles missing an embedding row (new or invalidated); does not scan the full table.
 3. **Assign** — For each unassigned article (by `published_at`):
-   - Find nearest neighbor within 48h, same `scope`.
-   - If cosine similarity ≥ threshold (0.90 if same `source`, else 0.82) and neighbor has a cluster → join it.
+   - Find up to **k=5** nearest neighbors within 48h, same `scope`.
+   - Join the best neighbor that clears the threshold (0.90 if same `source`, else 0.82).
    - Else create a new cluster.
-4. **Ready** — After cooldown (10 min), mark clusters `ready_for_llm`.
+4. **Event merge** — Before marking clusters ready, fold same-event clusters in the same scope (centroid / pairwise / title overlap). Logs to `logs/event_merge.jsonl`.
+5. **Ready** — After cooldown (10 min), mark clusters `ready_for_llm`.
 
 ## LLM handoff contract
 

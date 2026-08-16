@@ -1,3 +1,5 @@
+import { SITE_NAME } from "@/lib/site";
+
 export default function NotFound() {
   return (
     <div className="py-16 text-center font-sans">
@@ -6,7 +8,7 @@ export default function NotFound() {
         This story may have been removed or the link is incorrect.
       </p>
       <a href="/" className="mt-6 inline-block text-accent hover:underline">
-        Back to Bytez
+        Back to {SITE_NAME}
       </a>
     </div>
   );

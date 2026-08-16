@@ -22,25 +22,27 @@ export function SiteHeader() {
         >
           {SITE_NAME}
         </Link>
-        <nav className="flex flex-wrap gap-1 sm:gap-3 text-sm font-sans">
-          {SCOPE_PATHS.map((path) => {
-            const active =
-              pathname === `/${path}` || pathname.startsWith(`/${path}/`);
-            return (
-              <Link
-                key={path}
-                href={`/${path}`}
-                className={`px-3 py-1.5 rounded-full transition-colors border-b-2 ${
-                  active
-                    ? "text-ink border-accent"
-                    : "text-muted border-transparent hover:text-ink hover:bg-border/60"
-                }`}
-              >
-                {SCOPE_LABELS[path]}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-3 sm:gap-5">
+          <nav className="flex flex-wrap gap-1 sm:gap-3 text-sm font-sans">
+            {SCOPE_PATHS.map((path) => {
+              const active =
+                pathname === `/${path}` || pathname.startsWith(`/${path}/`);
+              return (
+                <Link
+                  key={path}
+                  href={`/${path}`}
+                  className={`px-3 py-1.5 rounded-full transition-colors border-b-2 ${
+                    active
+                      ? "text-ink border-accent"
+                      : "text-muted border-transparent hover:text-ink hover:bg-border/60"
+                  }`}
+                >
+                  {SCOPE_LABELS[path]}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { synthesizedStories, type Story } from "./schema";
 import { pathToScopeLabel, scopeToPath, type ScopePath } from "./scope";
@@ -20,6 +20,17 @@ function feedOrder() {
   ];
 }
 
+function feedConditions(scopePath?: ScopePath) {
+  const conditions = [isNull(synthesizedStories.canonicalStoryId)];
+  if (scopePath) {
+    const label = pathToScopeLabel(scopePath);
+    if (label) {
+      conditions.push(eq(synthesizedStories.scope, label));
+    }
+  }
+  return and(...conditions);
+}
+
 export async function getFeedStories(
   scopePath?: ScopePath,
   page = 1,
@@ -27,17 +38,7 @@ export async function getFeedStories(
   const db = getDb();
   const pageSize = FEED_PAGE_SIZE;
   const offset = (page - 1) * pageSize;
-
-  const conditions = [];
-  if (scopePath) {
-    const label = pathToScopeLabel(scopePath);
-    if (label) {
-      conditions.push(eq(synthesizedStories.scope, label));
-    }
-  }
-
-  const whereClause =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereClause = feedConditions(scopePath);
 
   const [stories, totalRow] = await Promise.all([
     db
@@ -102,6 +103,7 @@ export async function getRelatedStories(
     .from(synthesizedStories)
     .where(
       and(
+        isNull(synthesizedStories.canonicalStoryId),
         eq(synthesizedStories.scope, story.scope ?? ""),
         sql`${synthesizedStories.id} != ${story.id}`,
       ),
@@ -115,6 +117,7 @@ export async function getLatestStories(limit = 50): Promise<Story[]> {
   return db
     .select()
     .from(synthesizedStories)
+    .where(isNull(synthesizedStories.canonicalStoryId))
     .orderBy(...feedOrder())
     .limit(limit);
 }
@@ -139,7 +142,18 @@ export async function getRecentNewsStories(withinHours = 48): Promise<Story[]> {
   return db
     .select()
     .from(synthesizedStories)
-    .where(sql`${synthesizedStories.publishedAt} >= ${cutoff}`)
+    .where(
+      and(
+        isNull(synthesizedStories.canonicalStoryId),
+        sql`${synthesizedStories.publishedAt} >= ${cutoff}`,
+      ),
+    )
     .orderBy(...feedOrder())
     .limit(500);
+}
+
+export async function resolveCanonicalStory(story: Story): Promise<Story> {
+  if (!story.canonicalStoryId) return story;
+  const canonical = await getStoryById(story.canonicalStoryId);
+  return canonical ?? story;
 }

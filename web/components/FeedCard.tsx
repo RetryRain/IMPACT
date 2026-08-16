@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { Story } from "@/lib/schema";
 import { scopeToPath, storyPath } from "@/lib/scope";
 import { truncate } from "@/lib/format";
+import { SITE_NAME } from "@/lib/site";
 import { FeedCardLink } from "./FeedCardLink";
 import { RelativeTime } from "./RelativeTime";
 
@@ -45,7 +46,7 @@ export function FeedCard({ story }: { story: Story }) {
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-xs text-muted font-sans px-4 text-center">
-              Bytez
+              {SITE_NAME}
             </div>
           )}
         </div>

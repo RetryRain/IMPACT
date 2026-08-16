@@ -1,7 +1,7 @@
 {
-  "name": "Bytez",
-  "short_name": "Bytez",
-  "description": "News that matters to Tamil Nadu readers",
+  "name": "TNforME",
+  "short_name": "TNforME",
+  "description": "Your TN signal — what affects your life in Tamil Nadu",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf9f7",

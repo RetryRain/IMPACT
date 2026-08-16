@@ -6,7 +6,7 @@ export function FeedList({ stories }: { stories: Story[] }) {
   if (stories.length === 0) {
     return (
       <p className="font-sans text-muted py-12 text-center">
-        No stories yet. Check back after the next synthesis run.
+        No stories yet. Check back later.
       </p>
     );
   }

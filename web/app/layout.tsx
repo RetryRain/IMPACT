@@ -22,11 +22,11 @@ const serif = Lora({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: `${SITE_NAME} — News for Tamil Nadu`,
+    default: `${SITE_NAME} — Your TN signal`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Bytez publishes events that matter to people in Tamil Nadu, synthesized from multiple trusted sources.",
+    "TNforME gives you one clear story on what actually affects your life in Tamil Nadu — not every headline.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

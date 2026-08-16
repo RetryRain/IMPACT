@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     body_char_limit: int = 800
     batch_size: int = 32
     cluster_cooldown_minutes: int = 10
+    assign_neighbor_k: int = 5
+    event_merge_threshold: float = 0.74
+    event_merge_soft_threshold: float = 0.68
+    event_merge_title_jaccard: float = 0.35
 
     synthesis_database_url: str = (
         "postgresql+psycopg://user:pass@placeholder-host/neondb?sslmode=require"

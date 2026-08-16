@@ -11,6 +11,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), lastModified: now, changeFrequency: "hourly", priority: 1 },
+    {
+      url: absoluteUrl("/about"),
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    },
     ...SCOPE_PATHS.map((scope) => ({
       url: absoluteUrl(`/${scope}`),
       lastModified: now,

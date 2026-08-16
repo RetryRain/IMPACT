@@ -12,9 +12,9 @@ type PageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "What matters in Tamil Nadu today",
+  title: "My signal. Not your noise.",
   description:
-    "Latest Bytez stories ranked by relevance to Tamil Nadu readers.",
+    "TNforME stories ranked by how much they could affect your life in Tamil Nadu.",
   alternates: { canonical: absoluteUrl("/") },
 };
 
@@ -27,11 +27,11 @@ export default async function HomePage({ searchParams }: PageProps) {
     <div>
       <header className="mb-8 max-w-article">
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
-          What matters in Tamil Nadu today
+          My signal. Not your noise.
         </h1>
         <p className="mt-3 font-sans text-muted leading-relaxed">
-          Synthesized from multiple sources. Filtered for practical relevance —
-          not everything in the news.
+          TNforME doesn&apos;t give you more headlines. It gives you a clearer
+          picture of what affects <em>your</em> life in Tamil Nadu.
         </p>
       </header>
       <FeedList stories={feed.stories} />

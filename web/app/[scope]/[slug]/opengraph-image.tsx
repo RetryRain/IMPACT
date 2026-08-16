@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
 import { getStoryBySlug } from "@/lib/queries";
 import { isScopePath, type ScopePath } from "@/lib/scope";
+import { SITE_NAME } from "@/lib/site";
 
 export const runtime = "edge";
-export const alt = "Bytez article";
+export const alt = `${SITE_NAME} article`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -13,7 +14,7 @@ type Props = {
 
 export default async function OgImage({ params }: Props) {
   const { scope, slug } = await params;
-  let title = "Bytez";
+  let title = SITE_NAME;
 
   if (isScopePath(scope)) {
     const story = await getStoryBySlug(scope as ScopePath, slug);
@@ -56,7 +57,7 @@ export default async function OgImage({ params }: Props) {
             fontWeight: 600,
           }}
         >
-          Bytez
+          {SITE_NAME}
         </div>
       </div>
     ),
