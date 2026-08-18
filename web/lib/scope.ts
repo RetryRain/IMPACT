@@ -48,15 +48,15 @@ export function scopeChipClass(scope: string | null | undefined): string {
   return `${base} ${style.bg} ${style.text}`;
 }
 
-/** Subtitle for scope feed headers — avoids repeating the scope name in the line. */
+/** Subtitle for scope feed headers. */
 export function scopeFeedSubtitle(scopePath: ScopePath): string {
   switch (scopePath) {
     case "tamil-nadu":
-      return "Your state feed — ranked for what affects your daily life, not headline volume.";
+      return "News from the state that actually lands on people here.";
     case "india":
-      return "National news filtered for how it lands in Tamil Nadu — not every India story.";
+      return "National stories we keep only when they change life in Tamil Nadu.";
     case "world":
-      return "Global events that ripple into your life here — not every world headline.";
+      return "Global news we keep only when it reaches here.";
   }
 }
 

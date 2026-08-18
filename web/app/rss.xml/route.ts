@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLatestStories } from "@/lib/queries";
 import { scopeToPath, storyPath } from "@/lib/scope";
-import { absoluteUrl, SITE_NAME } from "@/lib/site";
+import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 export async function GET() {
   const stories = await getLatestStories(50);
@@ -29,7 +29,7 @@ export async function GET() {
   <channel>
     <title>${escapeXml(SITE_NAME)}</title>
     <link>${absoluteUrl("/")}</link>
-    <description>News that matters to Tamil Nadu readers</description>
+    <description>${escapeXml(SITE_DESCRIPTION)}</description>
     <language>en-in</language>
     ${items}
   </channel>

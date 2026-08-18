@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { SCOPE_LABELS, SCOPE_PATHS, scopeNavClass } from "@/lib/scope";
 import { SITE_NAME } from "@/lib/site";
 import { NavigationProgress } from "./NavigationProgress";
+import { SearchOverlay, SearchTrigger } from "./SearchOverlay";
 import { StreamMark } from "./StreamMark";
 
 export function SiteHeader() {
   const pathname = usePathname();
   const homeActive = pathname === "/";
   const [collapsed, setCollapsed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function SiteHeader() {
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
         <Link
           href="/"
@@ -52,24 +55,30 @@ export function SiteHeader() {
           <StreamMark className="h-8 w-8 shrink-0" idPrefix="header" />
           {SITE_NAME}
         </Link>
-        <nav
-          className="hidden md:flex flex-wrap gap-1 sm:gap-3 text-sm font-sans"
-          aria-label="Scope"
-        >
-          {SCOPE_PATHS.map((path) => {
-            const active =
-              pathname === `/${path}` || pathname.startsWith(`/${path}/`);
-            return (
-              <Link
-                key={path}
-                href={`/${path}`}
-                className={scopeNavClass(path, active)}
-              >
-                {SCOPE_LABELS[path]}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SearchTrigger
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-full text-muted hover:text-ink hover:bg-border/60 transition-colors"
+          />
+          <nav
+            className="hidden md:flex flex-wrap gap-1 sm:gap-3 text-sm font-sans"
+            aria-label="Scope"
+          >
+            {SCOPE_PATHS.map((path) => {
+              const active =
+                pathname === `/${path}` || pathname.startsWith(`/${path}/`);
+              return (
+                <Link
+                  key={path}
+                  href={`/${path}`}
+                  className={scopeNavClass(path, active)}
+                >
+                  {SCOPE_LABELS[path]}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );

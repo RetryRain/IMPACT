@@ -5,7 +5,7 @@ import { SITE_NAME, absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "How TNforME handles your data — no accounts, no tracking, read history stays on your device.",
+    "How TNDrops handles your data. No accounts, no ad tracking, read history stays on your device.",
   alternates: { canonical: absoluteUrl("/privacy") },
 };
 

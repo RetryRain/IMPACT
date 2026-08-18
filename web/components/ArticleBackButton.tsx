@@ -1,5 +1,7 @@
 "use client";
 
+import { markFeedReturnFromArticle } from "@/lib/feed-order";
+
 type ArticleBackButtonProps = {
   scopePath: string;
   className?: string;
@@ -12,6 +14,7 @@ export function ArticleBackButton({
   const fallback = `/${scopePath}`;
 
   const handleBack = () => {
+    markFeedReturnFromArticle();
     try {
       if (document.referrer) {
         const referrer = new URL(document.referrer);

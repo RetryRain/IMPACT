@@ -171,9 +171,12 @@ def test_apply_synthesis_result_to_story_updates_existing_row():
     assert updated.priority == 82
 
 
+@patch("clustering.synthesis.worker.get_dropped_session")
 @patch("clustering.synthesis.worker.get_publish_session")
 @patch("clustering.synthesis.worker.get_session")
-def test_synthesize_clusters_drop_skips_publish(get_session_mock, get_publish_mock, monkeypatch):
+def test_synthesize_clusters_drop_skips_publish(
+    get_session_mock, get_publish_mock, get_dropped_mock, monkeypatch
+):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     from clustering.config import get_settings
 
@@ -201,20 +204,73 @@ def test_synthesize_clusters_drop_skips_publish(get_session_mock, get_publish_mo
     publish_session.scalar.return_value = None
     get_publish_mock.return_value.__enter__.return_value = publish_session
 
-    mock_client = MagicMock()
-    mock_client.synthesize_cluster.return_value = SynthesisResult(
-        action="drop",
-        drop_reason="Sports highlight",
-        scope=None,
-        priority=None,
-        title=None,
-        summary=None,
-        body=None,
-    )
+    dropped_session = MagicMock()
+    get_dropped_mock.return_value.__enter__.return_value = dropped_session
 
-    stats = synthesize_clusters(limit=1, llm_client=mock_client)
+    with patch(
+        "clustering.synthesis.worker.find_known_urls", return_value=set()
+    ):
+        mock_client = MagicMock()
+        mock_client.synthesize_cluster.return_value = SynthesisResult(
+            action="drop",
+            drop_reason="Sports highlight",
+            scope=None,
+            priority=None,
+            title=None,
+            summary=None,
+            body=None,
+        )
+
+        stats = synthesize_clusters(limit=1, llm_client=mock_client)
 
     assert stats["dropped"] == 1
     assert stats["rewritten"] == 0
     publish_session.add.assert_not_called()
+    dropped_session.add.assert_called()
+    assert cluster.status == ClusterStatus.SYNTHESIZED
+
+
+@patch("clustering.synthesis.worker.get_dropped_session")
+@patch("clustering.synthesis.worker.get_publish_session")
+@patch("clustering.synthesis.worker.get_session")
+def test_synthesize_clusters_skips_when_all_urls_known(
+    get_session_mock, get_publish_mock, get_dropped_mock, monkeypatch
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    from clustering.config import get_settings
+
+    get_settings.cache_clear()
+    cluster_id = uuid.uuid4()
+    article = _article(
+        url="https://example.com/a",
+        source="The Hindu",
+        published_at=datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc),
+    )
+    cluster = StoryCluster(
+        id=cluster_id,
+        representative_article_id=article.id,
+        scope="India",
+        status=ClusterStatus.READY_FOR_LLM,
+        articles=[article],
+    )
+
+    cluster_session = MagicMock()
+    cluster_session.scalars.return_value.all.return_value = [cluster_id]
+    cluster_session.get.return_value = cluster
+    get_session_mock.return_value.__enter__.return_value = cluster_session
+
+    publish_session = MagicMock()
+    get_publish_mock.return_value.__enter__.return_value = publish_session
+    dropped_session = MagicMock()
+    get_dropped_mock.return_value.__enter__.return_value = dropped_session
+
+    mock_client = MagicMock()
+    with patch(
+        "clustering.synthesis.worker.find_known_urls",
+        return_value={"https://example.com/a"},
+    ):
+        stats = synthesize_clusters(limit=1, llm_client=mock_client)
+
+    assert stats["skipped_existing"] == 1
+    mock_client.synthesize_cluster.assert_not_called()
     assert cluster.status == ClusterStatus.SYNTHESIZED

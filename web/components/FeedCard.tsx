@@ -3,7 +3,7 @@ import type { Story } from "@/lib/schema";
 import { scopeToPath, storyPath, scopeChipClass } from "@/lib/scope";
 import { truncate } from "@/lib/format";
 import { FeedCardLink } from "./FeedCardLink";
-import { RelativeTime } from "./RelativeTime";
+import { StoryPublishedDate } from "./StoryPublishedDate";
 import { StreamMark } from "./StreamMark";
 
 export function FeedCard({ story }: { story: Story }) {
@@ -21,7 +21,7 @@ export function FeedCard({ story }: { story: Story }) {
             <span className={scopeChipClass(story.scope)}>
               {story.scope}
             </span>
-            <RelativeTime date={story.publishedAt} />
+            <StoryPublishedDate date={story.publishedAt ?? story.createdAt} />
             {sourceCount > 0 && (
               <span>{sourceCount} source{sourceCount !== 1 ? "s" : ""}</span>
             )}

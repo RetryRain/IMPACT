@@ -9,9 +9,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from clustering.article_history import (
+    filter_cluster_payload,
+    find_known_urls,
+    persist_dropped_urls,
+)
 from clustering.assigner import get_cluster_payload
 from clustering.config import get_settings
 from clustering.db.models import Article, ClusterStatus, StoryCluster
+from clustering.db.dropped_session import get_dropped_session
 from clustering.db.publish_models import SynthesizedStory
 from clustering.db.publish_session import get_publish_session
 from clustering.db.session import get_session
@@ -285,36 +291,67 @@ def _process_cluster(
 
     articles = cluster.articles
     context = _cluster_log_context(cluster, articles)
+    article_urls = [article.url for article in articles if article.url]
 
     payload = get_cluster_payload(cluster_session, cluster_id)
-    result = client.synthesize_cluster(payload)
-    synthesized_at = datetime.now(IST)
-    duration_ms = int((time.perf_counter() - started) * 1000)
 
-    if result.action == "drop":
-        cluster.status = ClusterStatus.SYNTHESIZED
-        cluster_session.commit()
-        info(f"  dropped cluster {cluster_id}: {result.drop_reason}")
-        if run_log is not None:
-            run_log.log_cluster(
-                **context,
-                outcome="dropped",
-                action=result.action,
-                drop_reason=result.drop_reason,
-                duration_ms=duration_ms,
+    with get_publish_session() as publish_session, get_dropped_session() as dropped_session:
+        known_urls = find_known_urls(publish_session, dropped_session, article_urls)
+        unseen_urls = {url for url in article_urls if url not in known_urls}
+
+        if not unseen_urls:
+            cluster.status = ClusterStatus.SYNTHESIZED
+            cluster_session.commit()
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            info(
+                f"  skipped cluster {cluster_id}: all {len(article_urls)} "
+                "source URL(s) already processed"
             )
-        return "dropped"
+            if run_log is not None:
+                run_log.log_cluster(
+                    **context,
+                    outcome="skipped_existing",
+                    known_url_count=len(known_urls),
+                    duration_ms=duration_ms,
+                )
+            return "skipped_existing"
 
-    story = build_synthesized_story(
-        cluster=cluster,
-        articles=articles,
-        result=result,
-        synthesized_at=synthesized_at,
-    )
+        filtered_payload = filter_cluster_payload(payload, unseen_urls)
+        result = client.synthesize_cluster(filtered_payload)
+        synthesized_at = datetime.now(IST)
+        duration_ms = int((time.perf_counter() - started) * 1000)
 
-    published_new = False
-    updated_existing = False
-    with get_publish_session() as publish_session:
+        if result.action == "drop":
+            persist_dropped_urls(
+                dropped_session,
+                urls=article_urls,
+                cluster_id=cluster_id,
+                drop_reason=result.drop_reason,
+            )
+            dropped_session.commit()
+            cluster.status = ClusterStatus.SYNTHESIZED
+            cluster_session.commit()
+            info(f"  dropped cluster {cluster_id}: {result.drop_reason}")
+            if run_log is not None:
+                run_log.log_cluster(
+                    **context,
+                    outcome="dropped",
+                    action=result.action,
+                    drop_reason=result.drop_reason,
+                    known_url_count=len(known_urls),
+                    duration_ms=duration_ms,
+                )
+            return "dropped"
+
+        story = build_synthesized_story(
+            cluster=cluster,
+            articles=articles,
+            result=result,
+            synthesized_at=synthesized_at,
+        )
+
+        published_new = False
+        updated_existing = False
         existing = publish_session.scalar(
             select(SynthesizedStory).where(
                 SynthesizedStory.cluster_id == cluster.id
@@ -352,6 +389,7 @@ def _process_cluster(
             tags=story.tags,
             published_new=published_new,
             updated_existing=updated_existing,
+            known_url_count=len(known_urls),
             duration_ms=duration_ms,
         )
     return "rewritten"

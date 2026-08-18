@@ -110,3 +110,4 @@ export async function markAllReadEggShown(setKey: string): Promise<void> {
 }
 
 export const INSTALL_BANNER_DISMISS_KEY = INSTALL_BANNER_KEY;
+export const PWA_INSTALLED_KEY = "tnforme:pwa-installed";

@@ -7,7 +7,8 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { InstallBanner } from "@/components/InstallBanner";
 import { AllReadEgg } from "@/components/AllReadEgg";
-import { SITE_NAME, absoluteUrl } from "@/lib/site";
+import { SiteJsonLd } from "@/components/SiteJsonLd";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, absoluteUrl } from "@/lib/site";
 import "./globals.css";
 
 const sans = Inter({
@@ -25,11 +26,10 @@ const serif = Lora({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: `${SITE_NAME} — Your TN signal`,
+    default: `${SITE_NAME} | ${SITE_TAGLINE}`,
     template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "TNforME gives you one clear story on what actually affects your life in Tamil Nadu — not every headline.",
+  description: SITE_DESCRIPTION,
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -63,6 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         suppressHydrationWarning
       >
         <SerwistProvider swUrl="/sw.js">
+          <SiteJsonLd />
           <SiteHeader />
           <InstallBanner />
           <main className="mx-auto max-w-5xl px-4 py-8 pb-tab-bar">{children}</main>

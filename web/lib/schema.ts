@@ -24,4 +24,13 @@ export const synthesizedStories = pgTable("synthesized_stories", {
   canonicalStoryId: uuid("canonical_story_id"),
 });
 
+export const storyRedirects = pgTable("story_redirects", {
+  storyId: uuid("story_id").primaryKey(),
+  scope: text("scope").notNull(),
+  slug: text("slug").notNull().unique(),
+  sourceUrl: text("source_url").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
 export type Story = typeof synthesizedStories.$inferSelect;
+export type StoryRedirect = typeof storyRedirects.$inferSelect;

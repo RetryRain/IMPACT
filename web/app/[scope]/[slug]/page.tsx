@@ -1,15 +1,20 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { ArticleBackButton } from "@/components/ArticleBackButton";
 import { ArticleBody } from "@/components/ArticleBody";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { PublisherLogos } from "@/components/PublisherLogos";
 import { MarkStoryRead } from "@/components/MarkStoryRead";
 import { NewsArticleJsonLd } from "@/components/NewsArticleJsonLd";
-import { RelativeTime } from "@/components/RelativeTime";
+import { ShareStoryButton } from "@/components/ShareStoryButton";
+import { StoryPublishedDate } from "@/components/StoryPublishedDate";
 import { storyKeywords } from "@/lib/keywords";
-import { getStoryById, getStoryBySlug } from "@/lib/queries";
+import {
+  getStoryById,
+  getStoryBySlug,
+  getStoryRedirectBySlug,
+} from "@/lib/queries";
 import {
   isScopePath,
   scopeToPath,
@@ -19,6 +24,7 @@ import {
 } from "@/lib/scope";
 import { resolveStoryPublishers } from "@/lib/publishers";
 import { absoluteUrl } from "@/lib/site";
+import type { Story } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -27,9 +33,19 @@ type PageProps = {
   params: Promise<{ scope: string; slug: string }>;
 };
 
-async function resolveArticleOrRedirect(scope: ScopePath, slug: string) {
+async function resolveArticleOrRedirect(
+  scope: ScopePath,
+  slug: string,
+): Promise<Story | null> {
   const story = await getStoryBySlug(scope, slug);
-  if (!story) return null;
+  if (!story) {
+    const tombstone = await getStoryRedirectBySlug(scope, slug);
+    if (tombstone?.sourceUrl) {
+      redirect(tombstone.sourceUrl);
+    }
+    return null;
+  }
+
   if (!story.canonicalStoryId) return story;
 
   const canonical = await getStoryById(story.canonicalStoryId);
@@ -47,7 +63,7 @@ export async function generateMetadata({
   const { scope, slug } = await params;
   if (!isScopePath(scope)) return { title: "Not found" };
 
-  const story = await resolveArticleOrRedirect(scope as ScopePath, slug);
+  const story = await getStoryBySlug(scope as ScopePath, slug);
   if (!story) return { title: "Not found" };
 
   const url = absoluteUrl(storyPath(scope as ScopePath, slug));
@@ -92,6 +108,7 @@ export default async function ArticlePage({ params }: PageProps) {
   const sourceUrls = story.sourceUrls ?? [];
   const publishers = resolveStoryPublishers(story.sources ?? [], sourceUrls);
   const pageUrl = absoluteUrl(storyPath(scope as ScopePath, slug));
+  const publishedAt = story.publishedAt ?? story.createdAt;
 
   return (
     <>
@@ -103,13 +120,14 @@ export default async function ArticlePage({ params }: PageProps) {
         </div>
 
         <header className="mb-8">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-4">
-            <span className={scopeChipClass(story.scope)}>
-              {story.scope}
-            </span>
-            {story.publishedAt && (
-              <RelativeTime date={story.publishedAt} />
-            )}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-muted mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={scopeChipClass(story.scope)}>
+                {story.scope}
+              </span>
+              <StoryPublishedDate date={publishedAt} />
+            </div>
+            <ShareStoryButton title={story.title} url={pageUrl} />
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
             {story.title}

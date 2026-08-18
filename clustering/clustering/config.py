@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     synthesis_database_url: str = (
         "postgresql+psycopg://user:pass@placeholder-host/neondb?sslmode=require"
     )
+    dropped_articles_database_url: str = (
+        "postgresql+psycopg://user:pass@placeholder-host/neondb?sslmode=require"
+    )
     synthesis_provider: str = "deepseek"
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com/v1"
@@ -38,7 +41,16 @@ class Settings(BaseSettings):
     synthesis_concurrency: int = 3
     synthesis_log_path: str = "logs/synthesis.jsonl"
 
-    @field_validator("database_url", "synthesis_database_url")
+    feedback_database_url: str = ""
+    db_size_limit_mb: int = 475
+    retention_days: int = 10
+
+    @field_validator(
+        "database_url",
+        "synthesis_database_url",
+        "dropped_articles_database_url",
+        "feedback_database_url",
+    )
     @classmethod
     def strip_database_url(cls, value: str) -> str:
         return value.strip()

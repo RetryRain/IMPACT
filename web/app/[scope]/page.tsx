@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { FadingIntro } from "@/components/FadingIntro";
 import { FeedList } from "@/components/FeedList";
 import { Pagination } from "@/components/Pagination";
 import { getFeedStories } from "@/lib/queries";
@@ -19,6 +20,24 @@ type PageProps = {
   searchParams: Promise<{ page?: string }>;
 };
 
+const SCOPE_META: Record<ScopePath, { title: string; description: string }> = {
+  "tamil-nadu": {
+    title: "Tamil Nadu news",
+    description:
+      "Tamil Nadu news for local readers from TNDrops. State stories on work, money, safety, and public services.",
+  },
+  india: {
+    title: "India news for Tamil Nadu readers",
+    description:
+      "National news from TNDrops when it changes life in Tamil Nadu. No engagement bait, no filler.",
+  },
+  world: {
+    title: "World news for Tamil Nadu readers",
+    description:
+      "Global news from TNDrops when it reaches Tamil Nadu. Short original briefs, free to read.",
+  },
+};
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -26,10 +45,10 @@ export async function generateMetadata({
   if (!isScopePath(scope)) {
     return { title: "Not found" };
   }
-  const label = SCOPE_LABELS[scope];
+  const meta = SCOPE_META[scope];
   return {
-    title: `${label} news`,
-    description: `TNforME stories about ${label}, ranked by how much they could affect your life in Tamil Nadu.`,
+    title: meta.title,
+    description: meta.description,
     alternates: { canonical: absoluteUrl(`/${scope}`) },
   };
 }
@@ -51,9 +70,9 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
           {label}
         </h1>
-        <p className="mt-3 font-sans text-muted leading-relaxed">
+        <FadingIntro className="mt-3">
           {scopeFeedSubtitle(scope as ScopePath)}
-        </p>
+        </FadingIntro>
       </header>
       <FeedList stories={feed.stories} />
       <Pagination

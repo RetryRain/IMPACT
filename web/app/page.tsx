@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FeedList } from "@/components/FeedList";
+import { FadingIntro } from "@/components/FadingIntro";
 import { Pagination } from "@/components/Pagination";
 import { getFeedStories } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/site";
@@ -12,9 +13,9 @@ type PageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "My signal. Not your noise.",
+  title: "Today in Tamil Nadu",
   description:
-    "TNforME stories ranked by how much they could affect your life in Tamil Nadu.",
+    "Tamil Nadu news briefing from TNDrops. Short original stories on work, money, safety, and community. Free, no ads, no account.",
   alternates: { canonical: absoluteUrl("/") },
 };
 
@@ -27,13 +28,12 @@ export default async function HomePage({ searchParams }: PageProps) {
     <div>
       <header className="mb-8 max-w-article">
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
-          My signal. Not your noise.
+          Today in Tamil Nadu
         </h1>
-        <p className="mt-3 font-sans text-muted leading-relaxed">
-          TNforME doesn&apos;t give you more headlines. It gives you a clearer
-          picture of what affects <em>your</em> life in Tamil Nadu. Free. No
-          account. No extra noise.
-        </p>
+        <FadingIntro className="mt-3">
+          Short original stories on what affects life here. No celebrity bait, no
+          outrage farming, no extra headlines.
+        </FadingIntro>
       </header>
       <FeedList stories={feed.stories} />
       <Pagination basePath="/" page={feed.page} totalPages={feed.totalPages} />

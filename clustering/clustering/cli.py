@@ -17,7 +17,14 @@ from clustering.db.session import check_database_connection, get_session
 from clustering.embedder import embed_articles
 from clustering.ingest import ingest_json_file
 from clustering.log import configure_logging, info, stage
+from clustering.prune import prune_all_databases
 from clustering.synthesis.worker import synthesize_clusters
+
+
+def _cmd_prune(_args: argparse.Namespace) -> int:
+    stats = prune_all_databases()
+    print(json.dumps(stats, indent=2))
+    return 0
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
@@ -52,6 +59,9 @@ def _cmd_assign(args: argparse.Namespace) -> int:
 def _cmd_process(args: argparse.Namespace) -> int:
     check_database_connection()
 
+    stage("Prune")
+    prune_stats = prune_all_databases()
+
     stage("Ingest")
     with get_session() as session:
         ingest_stats = ingest_json_file(session, args.file)
@@ -70,6 +80,7 @@ def _cmd_process(args: argparse.Namespace) -> int:
     print(
         json.dumps(
             {
+                "prune": prune_stats,
                 "ingest": ingest_stats,
                 "embed": embed_stats,
                 "assign": assign_stats,
@@ -170,6 +181,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Merge source clusters and re-synthesize survivors",
     )
     collapse_parser.set_defaults(func=_cmd_collapse_stories)
+
+    prune_parser = subparsers.add_parser(
+        "prune",
+        help="Delete rows older than retention window when a DB exceeds the size limit",
+    )
+    prune_parser.set_defaults(func=_cmd_prune)
 
     return parser
 

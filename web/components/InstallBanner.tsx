@@ -2,16 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SITE_NAME } from "@/lib/site";
-import { INSTALL_BANNER_DISMISS_KEY } from "@/lib/visited-store";
+import {
+  INSTALL_BANNER_DISMISS_KEY,
+  PWA_INSTALLED_KEY,
+} from "@/lib/visited-store";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type NavigatorWithInstalledApps = Navigator & {
+  standalone?: boolean;
+  getInstalledRelatedApps?: () => Promise<Array<{ id?: string }>>;
+};
+
 function isStandaloneMode(): boolean {
   if (typeof window === "undefined") return false;
-  const nav = navigator as Navigator & { standalone?: boolean };
+  const nav = navigator as NavigatorWithInstalledApps;
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     nav.standalone === true
@@ -32,6 +40,30 @@ function isIosSafari(): boolean {
   return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
 }
 
+async function detectInstalledPwa(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (localStorage.getItem(PWA_INSTALLED_KEY) === "1") return true;
+  if (isStandaloneMode()) {
+    localStorage.setItem(PWA_INSTALLED_KEY, "1");
+    return true;
+  }
+
+  const nav = navigator as NavigatorWithInstalledApps;
+  if (typeof nav.getInstalledRelatedApps === "function") {
+    try {
+      const apps = await nav.getInstalledRelatedApps();
+      if (apps.length > 0) {
+        localStorage.setItem(PWA_INSTALLED_KEY, "1");
+        return true;
+      }
+    } catch {
+      // Unsupported or blocked — fall through.
+    }
+  }
+
+  return false;
+}
+
 /**
  * Test install on the deployed HTTPS site — not LAN `npm run dev` (no SW / secure context).
  */
@@ -42,9 +74,28 @@ export function InstallBanner() {
     useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (!isMobileDevice() || isStandaloneMode()) return;
-    if (localStorage.getItem(INSTALL_BANNER_DISMISS_KEY) === "1") return;
-    setVisible(true);
+    let active = true;
+
+    const init = async () => {
+      if (!isMobileDevice()) return;
+      if (localStorage.getItem(INSTALL_BANNER_DISMISS_KEY) === "1") return;
+      if (await detectInstalledPwa()) return;
+      if (active) setVisible(true);
+    };
+
+    init();
+
+    const onInstalled = () => {
+      localStorage.setItem(PWA_INSTALLED_KEY, "1");
+      setVisible(false);
+      setShowSteps(false);
+    };
+
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      active = false;
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
 
   useEffect(() => {
@@ -67,6 +118,7 @@ export function InstallBanner() {
       await deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       setDeferredPrompt(null);
+      localStorage.setItem(PWA_INSTALLED_KEY, "1");
       dismiss();
       return;
     }
@@ -92,11 +144,10 @@ export function InstallBanner() {
         </button>
 
         <h2 className="font-serif text-lg font-bold text-accent-ink pr-8">
-          Use {SITE_NAME} as an app
+          Add {SITE_NAME} to your home screen
         </h2>
         <p className="mt-2 text-sm text-accent-ink/90 leading-relaxed max-w-xl">
-          Add it to your home screen. Open it like a real app — no tabs, no
-          noise.
+          Open your Tamil Nadu briefing like an app. No tabs, no clutter.
         </p>
 
         {showSteps ? (

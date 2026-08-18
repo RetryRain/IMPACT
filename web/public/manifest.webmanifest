@@ -1,13 +1,20 @@
 {
   "id": "/",
-  "name": "TNforME",
-  "short_name": "TNforME",
-  "description": "Your TN signal — what affects your life in Tamil Nadu",
+  "name": "TNDrops",
+  "short_name": "TNDrops",
+  "description": "Tamil Nadu news without the bait. Free briefing on work, money, safety, and public life.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf9f7",
   "theme_color": "#3d7a5c",
   "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.webmanifest"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

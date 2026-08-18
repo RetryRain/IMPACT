@@ -32,6 +32,7 @@ class SynthesizedStory(PublishBase):
     slug: Mapped[str] = mapped_column(String(256), nullable=False, unique=True, index=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    impact: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     url: Mapped[str] = mapped_column(String(2048), nullable=False)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -54,6 +55,20 @@ class SynthesizedStory(PublishBase):
     synthesized_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class StoryRedirect(PublishBase):
+    __tablename__ = "story_redirects"
+
+    story_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True
+    )
+    scope: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(256), unique=True, nullable=False, index=True)
+    source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

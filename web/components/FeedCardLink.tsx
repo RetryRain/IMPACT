@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { markFeedReturnFromArticle } from "@/lib/feed-order";
 import { isStoryRead } from "@/lib/visited-store";
 
 type FeedCardLinkProps = {
@@ -23,15 +24,25 @@ export function FeedCardLink({ href, storyId, children }: FeedCardLinkProps) {
     isStoryRead(storyId).then((value) => {
       if (active) setRead(value);
     });
+    const onStoryRead = () => {
+      isStoryRead(storyId).then((value) => {
+        if (active) setRead(value);
+      });
+    };
+    window.addEventListener("tnforme:story-read", onStoryRead);
     return () => {
       active = false;
+      window.removeEventListener("tnforme:story-read", onStoryRead);
     };
   }, [storyId]);
 
   return (
     <Link
       href={href}
-      onClick={saveFeedScroll}
+      onClick={() => {
+        saveFeedScroll();
+        markFeedReturnFromArticle();
+      }}
       className={`block gap-4 sm:grid sm:grid-cols-[1fr_200px] ${
         read ? "[&_h2]:text-visited" : ""
       }`}

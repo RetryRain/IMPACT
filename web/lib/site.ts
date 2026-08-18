@@ -1,4 +1,9 @@
-export const SITE_NAME = "TNforME";
+export const SITE_NAME = "TNDrops";
+
+export const SITE_TAGLINE = "Tamil Nadu news without the bait";
+
+export const SITE_DESCRIPTION =
+  "TNDrops is a free Tamil Nadu news briefing. Short original stories on work, money, safety, and public life. No clickbait, no ads, no account.";
 
 export function getSiteUrl(): string {
   const url = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

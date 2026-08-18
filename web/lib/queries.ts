@@ -1,6 +1,11 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { synthesizedStories, type Story } from "./schema";
+import {
+  storyRedirects,
+  synthesizedStories,
+  type Story,
+  type StoryRedirect,
+} from "./schema";
 import { pathToScopeLabel, scopeToPath, type ScopePath } from "./scope";
 
 export const FEED_PAGE_SIZE = 20;
@@ -93,6 +98,36 @@ export async function getStoryById(id: string): Promise<Story | null> {
   return rows[0] ?? null;
 }
 
+export async function getStoryRedirectBySlug(
+  scopePath: ScopePath,
+  slug: string,
+): Promise<StoryRedirect | null> {
+  const label = pathToScopeLabel(scopePath);
+  if (!label) return null;
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(storyRedirects)
+    .where(
+      and(eq(storyRedirects.slug, slug), eq(storyRedirects.scope, label)),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getStoryRedirectByStoryId(
+  id: string,
+): Promise<StoryRedirect | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(storyRedirects)
+    .where(eq(storyRedirects.storyId, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function getRelatedStories(
   story: Story,
   limit = 4,
@@ -152,13 +187,54 @@ export async function getRecentNewsStories(withinHours = 48): Promise<Story[]> {
     .limit(500);
 }
 
-export async function getCanonicalStoryIds(): Promise<string[]> {
+export async function getCanonicalStoryIds(scopePath?: ScopePath): Promise<string[]> {
   const db = getDb();
+  const conditions = [isNull(synthesizedStories.canonicalStoryId)];
+  if (scopePath) {
+    const label = pathToScopeLabel(scopePath);
+    if (label) {
+      conditions.push(eq(synthesizedStories.scope, label));
+    }
+  }
   const rows = await db
     .select({ id: synthesizedStories.id })
     .from(synthesizedStories)
-    .where(isNull(synthesizedStories.canonicalStoryId));
+    .where(and(...conditions));
   return rows.map((row) => row.id);
+}
+
+export type StorySearchIndexItem = {
+  id: string;
+  title: string;
+  summary: string | null;
+  slug: string;
+  scope: string | null;
+  publishedAt: string | null;
+};
+
+export async function getStorySearchIndex(): Promise<StorySearchIndexItem[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: synthesizedStories.id,
+      title: synthesizedStories.title,
+      summary: synthesizedStories.summary,
+      slug: synthesizedStories.slug,
+      scope: synthesizedStories.scope,
+      publishedAt: synthesizedStories.publishedAt,
+    })
+    .from(synthesizedStories)
+    .where(isNull(synthesizedStories.canonicalStoryId))
+    .orderBy(...feedOrder());
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    summary: row.summary,
+    slug: row.slug,
+    scope: row.scope,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+  }));
 }
 
 export async function resolveCanonicalStory(story: Story): Promise<Story> {
