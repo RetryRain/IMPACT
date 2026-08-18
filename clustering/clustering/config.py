@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     synthesis_timeout_seconds: int = 120
     synthesis_concurrency: int = 3
     synthesis_log_path: str = "logs/synthesis.jsonl"
+    synthesis_report_path: str = ""
 
     feedback_database_url: str = ""
     db_size_limit_mb: int = 475
@@ -64,6 +65,8 @@ class Settings(BaseSettings):
         "openrouter_base_url",
         "openrouter_model",
         "synthesis_log_path",
+        "synthesis_report_path",
+        "synthesis_report_path",
     )
     @classmethod
     def strip_synthesis_fields(cls, value: str) -> str:

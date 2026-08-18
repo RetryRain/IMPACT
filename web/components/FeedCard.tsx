@@ -3,7 +3,7 @@ import type { Story } from "@/lib/schema";
 import { scopeToPath, storyPath, scopeChipClass } from "@/lib/scope";
 import { truncate } from "@/lib/format";
 import { FeedCardLink } from "./FeedCardLink";
-import { StoryPublishedDate } from "./StoryPublishedDate";
+import { RelativeTime } from "./RelativeTime";
 import { StreamMark } from "./StreamMark";
 
 export function FeedCard({ story }: { story: Story }) {
@@ -11,7 +11,6 @@ export function FeedCard({ story }: { story: Story }) {
   const href = scopePath
     ? storyPath(scopePath, story.slug)
     : `/s/${story.id}`;
-  const sourceCount = story.sources?.length ?? 0;
 
   return (
     <article className="group border-b border-border py-6 first:pt-0">
@@ -21,10 +20,7 @@ export function FeedCard({ story }: { story: Story }) {
             <span className={scopeChipClass(story.scope)}>
               {story.scope}
             </span>
-            <StoryPublishedDate date={story.publishedAt ?? story.createdAt} />
-            {sourceCount > 0 && (
-              <span>{sourceCount} source{sourceCount !== 1 ? "s" : ""}</span>
-            )}
+            <RelativeTime date={story.publishedAt ?? story.createdAt} />
           </div>
           <h2 className="font-serif text-xl sm:text-2xl font-bold text-ink group-hover:text-accent transition-colors leading-snug">
             {story.title}

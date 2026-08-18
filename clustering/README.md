@@ -57,6 +57,7 @@ Environment variables: copy [`.env.example`](.env.example) to `.env` in this dir
 | `SYNTHESIS_TIMEOUT_SECONDS` | `120` |
 | `SYNTHESIS_CONCURRENCY` | `3` (parallel LLM calls per run) |
 | `SYNTHESIS_LOG_PATH` | `logs/synthesis.jsonl` (JSONL audit log per run) |
+| `SYNTHESIS_REPORT_PATH` | `logs/synthesis_reports.log` (human-readable run summary, like crawl reports) |
 
 ## CLI
 
@@ -106,6 +107,8 @@ Each run appends to `logs/synthesis.jsonl` (or `SYNTHESIS_LOG_PATH`). One JSON o
 
 - **`type: cluster`** — per-cluster outcome (`rewritten`, `dropped`, `failed`, or `skipped_existing`), LLM fields, sources, timing
 - **`type: summary`** — run totals and duration (last line of the run)
+
+Each run also appends a human-readable block to `logs/synthesis_reports.log` (or `SYNTHESIS_REPORT_PATH`), matching the style of `bytez/logs/crawl_reports.log`: examined/rewritten/dropped counts, timing, provider, and per-scope breakdown. Machine-readable totals go to `logs/synthesis_stats.jsonl`.
 
 The worker sends one LLM request per cluster (DeepSeek direct API by default). Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
 

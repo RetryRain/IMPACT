@@ -1,5 +1,6 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import { getDb } from "./db";
+import { IST_TIMEZONE } from "./feed-dates";
 import {
   storyRedirects,
   synthesizedStories,
@@ -9,6 +10,7 @@ import {
 import { pathToScopeLabel, scopeToPath, type ScopePath } from "./scope";
 
 export const FEED_PAGE_SIZE = 20;
+export const FEED_DEFAULT_HOURS = 24;
 
 export type FeedResult = {
   stories: Story[];
@@ -18,6 +20,8 @@ export type FeedResult = {
   totalPages: number;
 };
 
+const effectiveAt = sql`COALESCE(${synthesizedStories.publishedAt}, ${synthesizedStories.createdAt})`;
+
 function feedOrder() {
   return [
     desc(synthesizedStories.priority),
@@ -25,25 +29,38 @@ function feedOrder() {
   ];
 }
 
-function feedConditions(scopePath?: ScopePath) {
-  const conditions = [isNull(synthesizedStories.canonicalStoryId)];
-  if (scopePath) {
-    const label = pathToScopeLabel(scopePath);
-    if (label) {
-      conditions.push(eq(synthesizedStories.scope, label));
-    }
+function scopeCondition(scopePath?: ScopePath): SQL | undefined {
+  if (!scopePath) return undefined;
+  const label = pathToScopeLabel(scopePath);
+  if (!label) return undefined;
+  return eq(synthesizedStories.scope, label);
+}
+
+function feedTimeCondition(date?: string | null): SQL {
+  if (date) {
+    return sql`(timezone(${IST_TIMEZONE}, ${effectiveAt}))::date = ${date}::date`;
   }
-  return and(...conditions);
+  return sql`${effectiveAt} >= NOW() - (${FEED_DEFAULT_HOURS} * INTERVAL '1 hour')`;
+}
+
+function feedConditions(scopePath?: ScopePath, date?: string | null) {
+  const conditions: (SQL | undefined)[] = [
+    isNull(synthesizedStories.canonicalStoryId),
+    scopeCondition(scopePath),
+    feedTimeCondition(date),
+  ];
+  return and(...conditions.filter(Boolean));
 }
 
 export async function getFeedStories(
   scopePath?: ScopePath,
   page = 1,
+  date?: string | null,
 ): Promise<FeedResult> {
   const db = getDb();
   const pageSize = FEED_PAGE_SIZE;
   const offset = (page - 1) * pageSize;
-  const whereClause = feedConditions(scopePath);
+  const whereClause = feedConditions(scopePath, date);
 
   const [stories, totalRow] = await Promise.all([
     db
@@ -67,6 +84,29 @@ export async function getFeedStories(
     pageSize,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   };
+}
+
+export async function getFeedStoryDates(scopePath?: ScopePath): Promise<string[]> {
+  const db = getDb();
+  const conditions: (SQL | undefined)[] = [
+    isNull(synthesizedStories.canonicalStoryId),
+    scopeCondition(scopePath),
+  ];
+  const whereClause = and(...conditions.filter(Boolean));
+
+  const storyDateIst = sql`(timezone(${IST_TIMEZONE}, COALESCE(${synthesizedStories.publishedAt}, ${synthesizedStories.createdAt})))::date`;
+
+  const rows = await db
+    .selectDistinct({
+      storyDate: storyDateIst.as("story_date"),
+    })
+    .from(synthesizedStories)
+    .where(whereClause);
+
+  return rows
+    .map((row) => String(row.storyDate).slice(0, 10))
+    .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort((a, b) => b.localeCompare(a));
 }
 
 export async function getStoryBySlug(
@@ -189,17 +229,11 @@ export async function getRecentNewsStories(withinHours = 48): Promise<Story[]> {
 
 export async function getCanonicalStoryIds(scopePath?: ScopePath): Promise<string[]> {
   const db = getDb();
-  const conditions = [isNull(synthesizedStories.canonicalStoryId)];
-  if (scopePath) {
-    const label = pathToScopeLabel(scopePath);
-    if (label) {
-      conditions.push(eq(synthesizedStories.scope, label));
-    }
-  }
+  const whereClause = feedConditions(scopePath, null);
   const rows = await db
     .select({ id: synthesizedStories.id })
     .from(synthesizedStories)
-    .where(and(...conditions));
+    .where(whereClause);
   return rows.map((row) => row.id);
 }
 

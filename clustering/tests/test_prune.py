@@ -9,8 +9,10 @@ import pytest
 from clustering.prune import (
     BYTES_PER_MB,
     _cutoff,
+    _is_usable_database_url,
     _should_prune,
     prune_all_databases,
+    prune_feedback_database,
     prune_publish_database,
 )
 
@@ -93,6 +95,26 @@ def test_prune_publish_writes_redirects_and_deletes_old_stories():
     assert stats["redirects_written"] == 1
     assert stats["stories_deleted"] == 1
     assert session.execute.call_count >= 3
+
+
+def test_is_usable_database_url_rejects_invalid_values():
+    assert _is_usable_database_url("") is False
+    assert _is_usable_database_url("not-a-url") is False
+    assert (
+        _is_usable_database_url(
+            "postgresql+psycopg://user:pass@localhost:5432/feedback"
+        )
+        is True
+    )
+
+
+def test_prune_feedback_skips_invalid_url():
+    with patch("clustering.prune.get_settings") as mock_settings:
+        mock_settings.return_value.feedback_database_url = "invalid-url"
+        stats = prune_feedback_database()
+
+    assert stats["skipped"] is True
+    assert stats["pruned"] is False
 
 
 def test_prune_all_reports_each_database():

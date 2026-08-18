@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { FeedDateNav } from "@/components/FeedDateNav";
 import { FadingIntro } from "@/components/FadingIntro";
 import { FeedList } from "@/components/FeedList";
 import { Pagination } from "@/components/Pagination";
-import { getFeedStories } from "@/lib/queries";
+import { parseFeedDateParam } from "@/lib/feed-dates";
+import { getFeedStories, getFeedStoryDates } from "@/lib/queries";
 import {
   isScopePath,
   SCOPE_LABELS,
@@ -17,24 +19,24 @@ export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ scope: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; date?: string }>;
 };
 
 const SCOPE_META: Record<ScopePath, { title: string; description: string }> = {
   "tamil-nadu": {
     title: "Tamil Nadu news",
     description:
-      "Tamil Nadu news for local readers from TNDrops. State stories on work, money, safety, and public services.",
+      "Tamil Nadu news for local readers from TNDecaf. State stories on work, money, safety, and public services.",
   },
   india: {
     title: "India news for Tamil Nadu readers",
     description:
-      "National news from TNDrops when it changes life in Tamil Nadu. No engagement bait, no filler.",
+      "National news from TNDecaf when it changes life in Tamil Nadu. No engagement bait, no filler.",
   },
   world: {
     title: "World news for Tamil Nadu readers",
     description:
-      "Global news from TNDrops when it reaches Tamil Nadu. Short original briefs, free to read.",
+      "Global news from TNDecaf when it reaches Tamil Nadu. Short original briefs, free to read.",
   },
 };
 
@@ -61,8 +63,14 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
 
   const query = await searchParams;
   const page = Math.max(1, Number(query.page ?? "1") || 1);
-  const feed = await getFeedStories(scope as ScopePath, page);
+  const selectedDate = parseFeedDateParam(query.date);
+  const scopePath = scope as ScopePath;
+  const [feed, dates] = await Promise.all([
+    getFeedStories(scopePath, page, selectedDate),
+    getFeedStoryDates(scopePath),
+  ]);
   const label = SCOPE_LABELS[scope];
+  const paginationQuery = selectedDate ? { date: selectedDate } : undefined;
 
   return (
     <div>
@@ -71,14 +79,20 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
           {label}
         </h1>
         <FadingIntro className="mt-3">
-          {scopeFeedSubtitle(scope as ScopePath)}
+          {scopeFeedSubtitle(scopePath)}
         </FadingIntro>
       </header>
+      <FeedDateNav
+        basePath={`/${scope}`}
+        dates={dates}
+        selectedDate={selectedDate}
+      />
       <FeedList stories={feed.stories} />
       <Pagination
         basePath={`/${scope}`}
         page={feed.page}
         totalPages={feed.totalPages}
+        query={paginationQuery}
       />
     </div>
   );

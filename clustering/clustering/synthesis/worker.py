@@ -169,12 +169,14 @@ def synthesize_clusters(
 
     if not cluster_ids:
         info("No ready_for_llm clusters to synthesize.")
-        log.log_summary(
+        report_path = log.log_summary(
             stats,
             duration_ms=0,
             concurrency=max(1, get_settings().synthesis_concurrency),
+            limit=limit,
         )
         info(f"Synthesis log: {log.path}")
+        info(f"Synthesis report: {report_path}")
         return stats
 
     concurrency = max(1, get_settings().synthesis_concurrency)
@@ -235,10 +237,11 @@ def synthesize_clusters(
                     )
 
     duration_ms = int((time.perf_counter() - run_started) * 1000)
-    log.log_summary(
+    report_path = log.log_summary(
         stats,
         duration_ms=duration_ms,
         concurrency=concurrency,
+        limit=limit,
     )
 
     info(
@@ -247,6 +250,7 @@ def synthesize_clusters(
         f"failed={stats['failed']}, skipped_existing={stats['skipped_existing']}"
     )
     info(f"Synthesis log: {log.path}")
+    info(f"Synthesis report: {report_path}")
     return stats
 
 

@@ -6,7 +6,7 @@ import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "About TNDrops: free Tamil Nadu news without engagement bait. Short original stories on work, money, safety, and public life.",
+    "About TNDecaf: free Tamil Nadu news without engagement bait. Short original stories on work, money, safety, and public life.",
   alternates: { canonical: absoluteUrl("/about") },
 };
 
@@ -37,7 +37,8 @@ export default function AboutPage() {
           />
           <p className="mt-8 font-sans text-lg sm:text-xl text-muted leading-relaxed">
             {SITE_DESCRIPTION} India and world coverage appears only when it
-            reaches life here.
+            reaches life here. Think of it as decaf news: the signal, without the
+            outrage caffeine.
           </p>
           <div className="mt-10">
             <Link

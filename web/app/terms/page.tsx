@@ -5,7 +5,7 @@ import { SITE_NAME, absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Terms",
   description:
-    "Terms of use for TNDrops, a free independent Tamil Nadu news briefing.",
+    "Terms of use for TNDecaf, a free independent Tamil Nadu news briefing.",
   alternates: { canonical: absoluteUrl("/terms") },
 };
 

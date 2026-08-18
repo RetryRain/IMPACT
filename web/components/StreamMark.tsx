@@ -4,49 +4,45 @@ type StreamMarkProps = {
   idPrefix?: string;
 };
 
-export function StreamMark({ className = "h-6 w-6", idPrefix = "sm" }: StreamMarkProps) {
-  const streamId = `${idPrefix}-stream`;
-  const innerId = `${idPrefix}-stream-inner`;
-
+export function StreamMark({ className = "h-6 w-6" }: StreamMarkProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 500 500"
+      viewBox="0 0 320 320"
       className={className}
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id={streamId} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#059669" />
-          <stop offset="50%" stopColor="#10B981" />
-          <stop offset="100%" stopColor="#34D399" />
-        </linearGradient>
-        <linearGradient id={innerId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#065F46" />
-          <stop offset="100%" stopColor="#047857" />
-        </linearGradient>
-      </defs>
       <path
-        d="M 250, 70
-           C 290, 130 360, 210 360, 290
-           C 360, 370 310, 420 250, 420
-           C 190, 420 140, 370 140, 290
-           C 140, 230 180, 160 220, 120
-           C 210, 160 210, 190 225, 220
-           C 240, 250 265, 270 270, 300
-           C 275, 330 260, 355 240, 365
-           C 290, 360 320, 320 315, 270
-           C 310, 220 270, 160 250, 70 Z"
-        fill={`url(#${streamId})`}
+        d="M 140 20 C 60 20, 20 80, 20 160 C 20 240, 60 300, 140 300 C 150 300, 155 295, 155 285 L 155 35 C 155 25, 150 20, 140 20 Z"
+        fill="#0F382C"
       />
       <path
-        d="M 245, 160
-           C 270, 210 300, 250 295, 300
-           C 290, 340 265, 365 235, 370
-           C 260, 350 270, 320 260, 290
-           C 250, 260 225, 240 220, 210
-           C 215, 185 230, 170 245, 160 Z"
-        fill={`url(#${innerId})`}
+        d="M 180 20 L 230 20 L 290 80 L 290 160 C 290 240, 250 300, 180 300 C 170 300, 165 295, 165 285 L 165 35 C 165 25, 170 20, 180 20 Z"
+        fill="#12B76A"
+      />
+      <path
+        d="M 230 20 L 230 80 L 290 80 Z"
+        fill="#0F382C"
+        opacity="0.3"
+      />
+      <rect x="50" y="120" width="70" height="16" rx="8" fill="#FFFFFF" />
+      <rect
+        x="50"
+        y="152"
+        width="55"
+        height="14"
+        rx="7"
+        fill="#FFFFFF"
+        opacity="0.9"
+      />
+      <rect
+        x="50"
+        y="180"
+        width="40"
+        height="12"
+        rx="6"
+        fill="#FFFFFF"
+        opacity="0.7"
       />
     </svg>
   );

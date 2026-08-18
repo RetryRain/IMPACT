@@ -1,28 +1,36 @@
 import type { Metadata } from "next";
+import { FeedDateNav } from "@/components/FeedDateNav";
 import { FeedList } from "@/components/FeedList";
 import { FadingIntro } from "@/components/FadingIntro";
 import { Pagination } from "@/components/Pagination";
-import { getFeedStories } from "@/lib/queries";
+import { parseFeedDateParam } from "@/lib/feed-dates";
+import { getFeedStories, getFeedStoryDates } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 type PageProps = {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; date?: string }>;
 };
 
 export const metadata: Metadata = {
   title: "Today in Tamil Nadu",
   description:
-    "Tamil Nadu news briefing from TNDrops. Short original stories on work, money, safety, and community. Free, no ads, no account.",
+    "Tamil Nadu news briefing from TNDecaf. Short original stories on work, money, safety, and community. Free, no ads, no account.",
   alternates: { canonical: absoluteUrl("/") },
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
-  const feed = await getFeedStories(undefined, page);
+  const selectedDate = parseFeedDateParam(params.date);
+  const [feed, dates] = await Promise.all([
+    getFeedStories(undefined, page, selectedDate),
+    getFeedStoryDates(),
+  ]);
+
+  const paginationQuery = selectedDate ? { date: selectedDate } : undefined;
 
   return (
     <div>
@@ -35,8 +43,18 @@ export default async function HomePage({ searchParams }: PageProps) {
           outrage farming, no extra headlines.
         </FadingIntro>
       </header>
+      <FeedDateNav
+        basePath="/"
+        dates={dates}
+        selectedDate={selectedDate}
+      />
       <FeedList stories={feed.stories} />
-      <Pagination basePath="/" page={feed.page} totalPages={feed.totalPages} />
+      <Pagination
+        basePath="/"
+        page={feed.page}
+        totalPages={feed.totalPages}
+        query={paginationQuery}
+      />
     </div>
   );
 }

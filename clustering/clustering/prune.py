@@ -20,6 +20,19 @@ from clustering.timezone_util import IST
 BYTES_PER_MB = 1024 * 1024
 
 
+def _is_usable_database_url(url: str) -> bool:
+    cleaned = (url or "").strip()
+    if not cleaned or "://" not in cleaned:
+        return False
+    try:
+        from sqlalchemy.engine.url import make_url
+
+        make_url(cleaned)
+        return True
+    except Exception:
+        return False
+
+
 def _cutoff(retention_days: int) -> datetime:
     return datetime.now(IST) - timedelta(days=retention_days)
 
@@ -196,7 +209,7 @@ def prune_feedback_database() -> dict[str, Any]:
         "skipped": False,
     }
 
-    if not settings.feedback_database_url:
+    if not _is_usable_database_url(settings.feedback_database_url):
         stats["skipped"] = True
         return stats
 
