@@ -9,6 +9,7 @@ from clustering.synthesis.prompt import SynthesisResult
 from clustering.synthesis.worker import (
     apply_synthesis_result_to_story,
     build_synthesized_story,
+    resolve_article_image,
     resolve_representative_article,
     synthesize_clusters,
 )
@@ -20,6 +21,7 @@ def _article(
     source: str,
     published_at: datetime,
     title: str = "Title",
+    image: str = "https://example.com/image.jpg",
 ) -> Article:
     return Article(
         id=uuid.uuid4(),
@@ -30,7 +32,7 @@ def _article(
         source=source,
         scope="India",
         author="Author",
-        image="https://example.com/image.jpg",
+        image=image,
         tags=["politics"],
         language="en",
         published_at=published_at,
@@ -70,6 +72,48 @@ def test_resolve_representative_article_falls_back_to_earliest_published():
     assert representative.id == earlier.id
 
 
+def test_resolve_article_image_prefers_indian_express_over_toi_and_hindu():
+    hindu = _article(
+        url="https://www.thehindu.com/a",
+        source="The Hindu",
+        published_at=datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc),
+        image="https://example.com/hindu.jpg",
+    )
+    toi = _article(
+        url="https://timesofindia.indiatimes.com/b",
+        source="The Times of India",
+        published_at=datetime(2026, 8, 5, 11, 0, tzinfo=timezone.utc),
+        image="https://example.com/toi.jpg",
+    )
+    ie = _article(
+        url="https://indianexpress.com/c",
+        source="The Indian Express",
+        published_at=datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc),
+        image="https://example.com/ie.jpg",
+    )
+
+    image = resolve_article_image([hindu, toi, ie], hindu)
+    assert image == "https://example.com/ie.jpg"
+
+
+def test_resolve_article_image_prefers_toi_over_hindu():
+    hindu = _article(
+        url="https://www.thehindu.com/a",
+        source="The Hindu",
+        published_at=datetime(2026, 8, 5, 10, 0, tzinfo=timezone.utc),
+        image="https://example.com/hindu.jpg",
+    )
+    toi = _article(
+        url="https://timesofindia.indiatimes.com/b",
+        source="TOI",
+        published_at=datetime(2026, 8, 5, 11, 0, tzinfo=timezone.utc),
+        image="https://example.com/toi.jpg",
+    )
+
+    image = resolve_article_image([hindu, toi], hindu)
+    assert image == "https://example.com/toi.jpg"
+
+
 def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     article = _article(
         url="https://example.com/a",
@@ -80,6 +124,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
         url="https://example.com/b",
         source="TOI",
         published_at=datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc),
+        image="https://example.com/toi.jpg",
     )
     other.tags = ["economy"]
     cluster = StoryCluster(
@@ -111,7 +156,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     assert story.body == "Rewritten body"
     assert story.url == article.url
     assert story.author == article.author
-    assert story.image == article.image
+    assert story.image == "https://example.com/toi.jpg"
     assert story.tags == ["politics", "economy"]
     assert story.language == article.language
     assert story.scope == "Tamil Nadu"

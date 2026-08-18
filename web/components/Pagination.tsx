@@ -38,10 +38,10 @@ export function Pagination({
 
   return (
     <nav
-      className="mt-10 flex items-center justify-between font-sans text-sm"
+      className="mt-10 grid grid-cols-3 items-center font-sans text-sm"
       aria-label="Pagination"
     >
-      <div>
+      <div className="justify-self-start">
         {prevPage ? (
           <Link
             href={buildPageHref(basePath, prevPage, query)}
@@ -54,10 +54,10 @@ export function Pagination({
           <span className="text-muted">← Previous</span>
         )}
       </div>
-      <span className="text-muted">
+      <span className="justify-self-center text-center text-muted">
         Page {page} of {totalPages}
       </span>
-      <div>
+      <div className="justify-self-end text-right">
         {nextPage ? (
           <Link
             href={buildPageHref(basePath, nextPage, query)}

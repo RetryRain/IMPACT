@@ -22,6 +22,7 @@ from clustering.db.publish_models import SynthesizedStory
 from clustering.db.publish_session import get_publish_session
 from clustering.db.session import get_session
 from clustering.log import info
+from clustering.publishers import publisher_image_rank
 from clustering.synthesis.client import get_synthesis_client, SynthesisClient
 from clustering.synthesis.llm_client import SynthesisError
 from clustering.synthesis.prompt import SynthesisResult
@@ -45,6 +46,29 @@ def resolve_representative_article(
             article.created_at,
         ),
     )
+
+
+def resolve_article_image(articles: list[Article], fallback: Article) -> str | None:
+    """Pick image from highest-ranked publisher that has one (IE > TOI > Hindu)."""
+    candidates = [
+        article
+        for article in articles
+        if article.image and str(article.image).strip()
+    ]
+    if not candidates:
+        return fallback.image
+
+    def sort_key(article: Article) -> tuple[int, float]:
+        rank = publisher_image_rank(article.source, article.url)
+        published_ts = (
+            article.published_at.timestamp()
+            if article.published_at is not None
+            else 0.0
+        )
+        return (rank, -published_ts)
+
+    best = max(candidates, key=sort_key)
+    return best.image
 
 
 def union_article_tags(articles: list[Article]) -> list[str] | None:
@@ -72,6 +96,7 @@ def build_synthesized_story(
     story_id: uuid.UUID | None = None,
 ) -> SynthesizedStory:
     representative = resolve_representative_article(cluster, articles)
+    image = resolve_article_image(articles, representative)
     source_urls = [article.url for article in articles if article.url]
     sources = sorted(
         {article.source for article in articles if article.source}
@@ -88,7 +113,7 @@ def build_synthesized_story(
         url=representative.url,
         source=representative.source,
         author=representative.author,
-        image=representative.image,
+        image=image,
         tags=union_article_tags(articles),
         language=representative.language,
         scope=result.scope,
@@ -110,6 +135,7 @@ def apply_synthesis_result_to_story(
     synthesized_at: datetime,
 ) -> SynthesizedStory:
     representative = resolve_representative_article(cluster, articles)
+    image = resolve_article_image(articles, representative)
     source_urls = [article.url for article in articles if article.url]
     sources = sorted({article.source for article in articles if article.source})
 
@@ -119,7 +145,7 @@ def apply_synthesis_result_to_story(
     existing.url = representative.url
     existing.source = representative.source
     existing.author = representative.author
-    existing.image = representative.image
+    existing.image = image
     existing.tags = union_article_tags(articles)
     existing.language = representative.language
     existing.scope = result.scope
