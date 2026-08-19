@@ -406,4 +406,4 @@ gcloud run jobs delete impact-cluster --region us-central1 --quiet
 
 ## Next stage (not built yet)
 
-**LLM synthesis** — consume `ready_for_llm` clusters via `show-cluster` JSON payload; one LLM call per cluster. See [clustering/README.md](clustering/README.md#llm-handoff-contract).
+**LLM synthesis** — consume `ready_for_llm` clusters via `show-cluster` JSON payload; relevance screening uses titles only (one call), rewrite uses truncated sources for kept clusters (second call). See [clustering/README.md](clustering/README.md#llm-handoff-contract).

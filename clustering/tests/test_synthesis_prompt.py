@@ -10,15 +10,51 @@ from clustering.synthesis.openrouter_client import (
     SynthesisError,
 )
 from clustering.synthesis.prompt import (
+    RELEVANCE_SYSTEM_PROMPT,
+    REWRITE_SYSTEM_PROMPT,
+    ClassifyResult,
     SynthesisResult,
-    build_user_message,
-    compact_cluster_payload,
+    build_classify_user_message,
+    build_rewrite_user_message,
+    compact_classify_payload,
+    compact_rewrite_payload,
     normalize_scope,
+    parse_classify_result,
     parse_synthesis_result,
 )
 
 
-def test_compact_cluster_payload_truncates_body(monkeypatch):
+def test_compact_classify_payload_titles_only():
+    payload = {
+        "cluster_id": "abc",
+        "scope": "India",
+        "articles": [
+            {
+                "source": "The Hindu",
+                "title": "Title One",
+                "url": "https://example.com/a",
+                "summary": "Summary",
+                "body": "x" * 50,
+                "published_at": "2026-08-05T12:00:00+05:30",
+            },
+            {
+                "source": "TOI",
+                "title": "Title Two",
+                "url": "https://example.com/b",
+                "summary": "Summary 2",
+                "body": "body",
+            },
+        ],
+    }
+
+    compact = compact_classify_payload(payload)
+    assert compact == {"titles": ["Title One", "Title Two"]}
+    assert "body" not in json.dumps(compact)
+    assert "summary" not in json.dumps(compact)
+    assert "url" not in json.dumps(compact)
+
+
+def test_compact_rewrite_payload_truncates_body(monkeypatch):
     monkeypatch.setenv("SYNTHESIS_BODY_CHAR_LIMIT", "10")
     from clustering.config import get_settings
 
@@ -27,7 +63,6 @@ def test_compact_cluster_payload_truncates_body(monkeypatch):
     payload = {
         "cluster_id": "abc",
         "scope": "India",
-        "article_count": 1,
         "articles": [
             {
                 "source": "The Hindu",
@@ -40,12 +75,42 @@ def test_compact_cluster_payload_truncates_body(monkeypatch):
         ],
     }
 
-    compact = compact_cluster_payload(payload)
+    compact = compact_rewrite_payload(payload)
     assert len(compact["articles"][0]["body"]) == 10
-    assert "author" not in compact["articles"][0]
+    assert compact["articles"][0]["summary"] == "Summary"
+    assert compact["articles"][0]["title"] == "Title"
     assert compact["assigned_scope"] == "India"
-    assert "article_count" not in compact
-    assert "scope" not in compact
+    assert set(compact["articles"][0].keys()) == {"title", "summary", "body"}
+    assert "cluster_id" not in compact
+    assert "source" not in compact
+    assert "url" not in compact
+    assert "published_at" not in compact
+
+
+def test_relevance_prompt_contains_editorial_rules():
+    assert "TNDecaf" in RELEVANCE_SYSTEM_PROMPT
+    assert "Tamil Nadu" in RELEVANCE_SYSTEM_PROMPT
+    assert "Foreign war" in RELEVANCE_SYSTEM_PROMPT
+    assert "Routine sports result" in RELEVANCE_SYSTEM_PROMPT
+    assert "celebrity" in RELEVANCE_SYSTEM_PROMPT.lower()
+
+
+def test_rewrite_prompt_contains_synthesis_rules():
+    assert "TNDecaf" in REWRITE_SYSTEM_PROMPT
+    assert "Never invent" in REWRITE_SYSTEM_PROMPT
+    assert "Sources disagree" in REWRITE_SYSTEM_PROMPT
+    assert "PRIORITY" in REWRITE_SYSTEM_PROMPT
+    assert "assigned_scope" in REWRITE_SYSTEM_PROMPT
+
+
+def test_classify_result_requires_drop_reason():
+    with pytest.raises(ValidationError):
+        ClassifyResult(action="drop", drop_reason=None)
+
+
+def test_classify_result_keep_rejects_drop_reason():
+    with pytest.raises(ValidationError):
+        ClassifyResult(action="keep", drop_reason="Sports")
 
 
 def test_synthesis_result_requires_rewrite_fields():
@@ -123,18 +188,50 @@ def test_coerce_priority_points_alias():
     assert result.priority == 55
 
 
-def test_build_user_message_contains_cluster_json():
+def test_build_classify_user_message_is_compact():
     payload = {
         "cluster_id": "abc",
         "scope": "India",
-        "article_count": 1,
-        "articles": [],
+        "articles": [{"title": "Headline"}],
     }
-    message = build_user_message(payload)
-    assert "cluster_id" in message
-    assert "abc" in message
+    message = build_classify_user_message(payload)
+    assert "titles" in message
+    assert "Headline" in message
+    assert "\n  " not in message
+    assert "body" not in message
+
+
+def test_build_rewrite_user_message_is_compact():
+    payload = {
+        "cluster_id": "abc",
+        "scope": "India",
+        "articles": [
+            {
+                "source": "The Hindu",
+                "title": "Title",
+                "summary": "Summary",
+                "body": "Body",
+            }
+        ],
+    }
+    message = build_rewrite_user_message(payload)
     assert "assigned_scope" in message
-    assert "Verify assigned_scope" in message
+    assert "India" in message
+    assert "\n  " not in message
+    assert '"source"' not in message
+    assert '"url"' not in message
+
+
+def test_coerce_classify_publish_false():
+    result = parse_classify_result({"publish": False, "reason": "Sports"})
+    assert result.action == "drop"
+    assert result.drop_reason == "Sports"
+
+
+def test_coerce_classify_publish_true():
+    result = parse_classify_result({"publish": True})
+    assert result.action == "keep"
+    assert result.drop_reason is None
 
 
 def test_coerce_drop_clears_scope_and_priority():
@@ -163,9 +260,7 @@ def test_extract_json_from_reasoning_text():
         "Thus output:\n\n"
         "{\n"
         '  "action": "drop",\n'
-        '  "drop_reason": "irrelevant",\n'
-        '  "scope": null,\n'
-        '  "priority": null\n'
+        '  "drop_reason": "irrelevant"\n'
         "}\n"
     )
     data = _extract_json_object(text)
@@ -230,13 +325,62 @@ def _rewrite_response() -> dict:
     }
 
 
+def _classify_keep_response() -> dict:
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {"action": "keep", "drop_reason": None}
+                    )
+                }
+            }
+        ]
+    }
+
+
+def test_openrouter_classify_uses_minimal_schema():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode())
+        assert body["response_format"]["json_schema"]["name"] == "classify_result"
+        assert body["messages"][0]["content"] == RELEVANCE_SYSTEM_PROMPT
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"action": "drop", "drop_reason": "Sports"}
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport, base_url="http://test")
+    openrouter = OpenRouterClient(api_key="test-key", client=client)
+    result = openrouter.classify_cluster(
+        {"articles": [{"title": "Cricket score"}]}
+    )
+    assert result.action == "drop"
+    assert result.drop_reason == "Sports"
+
+
 def test_openrouter_client_parses_structured_output():
+    calls: list[str] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/chat/completions":
             body = json.loads(request.content.decode())
+            calls.append(body["response_format"]["json_schema"]["name"])
             assert body["model"] == "test-model"
             assert body["response_format"]["type"] == "json_schema"
             assert len(body["messages"]) == 2
+            if calls[-1] == "classify_result":
+                return httpx.Response(200, json=_classify_keep_response())
             return httpx.Response(200, json=_rewrite_response())
         return httpx.Response(404)
 
@@ -249,11 +393,15 @@ def test_openrouter_client_parses_structured_output():
         client=client,
     )
 
+    classify_result = openrouter.classify_cluster(
+        {"articles": [{"title": "Policy change"}]}
+    )
+    assert classify_result.action == "keep"
+
     result = openrouter.synthesize_cluster(
         {
             "cluster_id": "abc",
             "scope": "India",
-            "article_count": 1,
             "articles": [],
         }
     )
@@ -261,6 +409,7 @@ def test_openrouter_client_parses_structured_output():
     assert result.title == "Rewritten"
     assert result.scope == "India"
     assert result.priority == 65
+    assert calls == ["classify_result", "synthesis_result"]
 
 
 def test_openrouter_client_strips_markdown_fences():

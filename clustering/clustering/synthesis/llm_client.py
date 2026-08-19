@@ -9,9 +9,13 @@ import httpx
 from pydantic import ValidationError
 
 from clustering.synthesis.prompt import (
-    SYSTEM_PROMPT,
+    RELEVANCE_SYSTEM_PROMPT,
+    REWRITE_SYSTEM_PROMPT,
+    ClassifyResult,
     SynthesisResult,
-    build_user_message,
+    build_classify_user_message,
+    build_rewrite_user_message,
+    parse_classify_result,
     parse_synthesis_result,
 )
 
@@ -131,6 +135,22 @@ class ChatCompletionsClient:
     def __exit__(self, *args: object) -> None:
         self.close()
 
+    def classify_cluster(
+        self,
+        payload: dict[str, Any],
+        *,
+        response_format: dict[str, Any],
+    ) -> ClassifyResult:
+        body = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": RELEVANCE_SYSTEM_PROMPT},
+                {"role": "user", "content": build_classify_user_message(payload)},
+            ],
+            "response_format": response_format,
+        }
+        return self._call_with_retry(body, parse_classify_result)
+
     def synthesize_cluster(
         self,
         payload: dict[str, Any],
@@ -140,16 +160,23 @@ class ChatCompletionsClient:
         body = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_message(payload)},
+                {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
+                {"role": "user", "content": build_rewrite_user_message(payload)},
             ],
             "response_format": response_format,
         }
+        return self._call_with_retry(body, parse_synthesis_result)
+
+    def _call_with_retry(
+        self,
+        body: dict[str, Any],
+        parser: Any,
+    ) -> Any:
         last_error: StructuredOutputError | None = None
         for attempt in range(2):
             try:
                 response = self._post_with_retry("/chat/completions", body)
-                return self._parse_response(response)
+                return self._parse_response(response, parser)
             except StructuredOutputError as exc:
                 last_error = exc
                 if attempt == 0:
@@ -158,7 +185,7 @@ class ChatCompletionsClient:
                 raise
         if last_error is not None:
             raise last_error
-        raise SynthesisError("synthesis failed after retries")
+        raise SynthesisError("LLM call failed after retries")
 
     def _post_with_retry(self, path: str, body: dict[str, Any]) -> httpx.Response:
         last_error: Exception | None = None
@@ -193,7 +220,11 @@ class ChatCompletionsClient:
             ) from last_error
         raise SynthesisError(f"{self.provider_name} request failed after retries")
 
-    def _parse_response(self, response: httpx.Response) -> SynthesisResult:
+    def _parse_response(
+        self,
+        response: httpx.Response,
+        parser: Any,
+    ) -> Any:
         try:
             payload = response.json()
         except ValueError as exc:
@@ -220,9 +251,9 @@ class ChatCompletionsClient:
                 f"{self.provider_name} response missing message content: {payload}"
             )
 
-        return self._parse_structured_content(text)
+        return self._parse_structured_content(text, parser)
 
-    def _parse_structured_content(self, content: str) -> SynthesisResult:
+    def _parse_structured_content(self, content: str, parser: Any) -> Any:
         try:
             data = _extract_json_object(content)
         except ValueError as exc:
@@ -231,7 +262,7 @@ class ChatCompletionsClient:
             ) from exc
 
         try:
-            return parse_synthesis_result(data)
+            return parser(data)
         except ValidationError as exc:
             raise StructuredOutputError(
                 f"{self.provider_name} JSON failed validation: {exc}"

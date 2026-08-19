@@ -5,10 +5,12 @@ from typing import Any, Protocol
 from clustering.config import get_settings
 from clustering.synthesis.deepseek_client import DeepSeekClient
 from clustering.synthesis.openrouter_client import OpenRouterClient
-from clustering.synthesis.prompt import SynthesisResult
+from clustering.synthesis.prompt import ClassifyResult, SynthesisResult
 
 
 class SynthesisClient(Protocol):
+    def classify_cluster(self, payload: dict[str, Any]) -> ClassifyResult: ...
+
     def synthesize_cluster(self, payload: dict[str, Any]) -> SynthesisResult: ...
 
     def close(self) -> None: ...

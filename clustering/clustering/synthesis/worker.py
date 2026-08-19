@@ -195,14 +195,13 @@ def synthesize_clusters(
 
     if not cluster_ids:
         info("No ready_for_llm clusters to synthesize.")
-        report_path = log.log_summary(
+        log.log_summary(
             stats,
             duration_ms=0,
             concurrency=max(1, get_settings().synthesis_concurrency),
             limit=limit,
         )
         info(f"Synthesis log: {log.path}")
-        info(f"Synthesis report: {report_path}")
         return stats
 
     concurrency = max(1, get_settings().synthesis_concurrency)
@@ -263,7 +262,7 @@ def synthesize_clusters(
                     )
 
     duration_ms = int((time.perf_counter() - run_started) * 1000)
-    report_path = log.log_summary(
+    log.log_summary(
         stats,
         duration_ms=duration_ms,
         concurrency=concurrency,
@@ -276,7 +275,6 @@ def synthesize_clusters(
         f"failed={stats['failed']}, skipped_existing={stats['skipped_existing']}"
     )
     info(f"Synthesis log: {log.path}")
-    info(f"Synthesis report: {report_path}")
     return stats
 
 
@@ -347,6 +345,31 @@ def _process_cluster(
             return "skipped_existing"
 
         filtered_payload = filter_cluster_payload(payload, unseen_urls)
+
+        classify_result = client.classify_cluster(filtered_payload)
+        if classify_result.action == "drop":
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            persist_dropped_urls(
+                dropped_session,
+                urls=article_urls,
+                cluster_id=cluster_id,
+                drop_reason=classify_result.drop_reason,
+            )
+            dropped_session.commit()
+            cluster.status = ClusterStatus.SYNTHESIZED
+            cluster_session.commit()
+            info(f"  dropped cluster {cluster_id}: {classify_result.drop_reason}")
+            if run_log is not None:
+                run_log.log_cluster(
+                    **context,
+                    outcome="dropped",
+                    action=classify_result.action,
+                    drop_reason=classify_result.drop_reason,
+                    known_url_count=len(known_urls),
+                    duration_ms=duration_ms,
+                )
+            return "dropped"
+
         result = client.synthesize_cluster(filtered_payload)
         synthesized_at = datetime.now(IST)
         duration_ms = int((time.perf_counter() - started) * 1000)
@@ -361,7 +384,10 @@ def _process_cluster(
             dropped_session.commit()
             cluster.status = ClusterStatus.SYNTHESIZED
             cluster_session.commit()
-            info(f"  dropped cluster {cluster_id}: {result.drop_reason}")
+            info(
+                f"  dropped cluster {cluster_id} after rewrite review: "
+                f"{result.drop_reason}"
+            )
             if run_log is not None:
                 run_log.log_cluster(
                     **context,

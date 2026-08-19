@@ -12,7 +12,12 @@ from clustering.synthesis.llm_client import (
     _extract_json_object,
     _message_text,
 )
-from clustering.synthesis.prompt import SYNTHESIS_JSON_SCHEMA, SynthesisResult
+from clustering.synthesis.prompt import (
+    CLASSIFY_JSON_SCHEMA,
+    SYNTHESIS_JSON_SCHEMA,
+    ClassifyResult,
+    SynthesisResult,
+)
 
 # Re-export for tests and backward compatibility.
 __all__ = [
@@ -23,7 +28,16 @@ __all__ = [
     "_message_text",
 ]
 
-_OPENROUTER_JSON_SCHEMA_RESPONSE_FORMAT: dict[str, Any] = {
+_OPENROUTER_CLASSIFY_SCHEMA_RESPONSE_FORMAT: dict[str, Any] = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "classify_result",
+        "strict": True,
+        "schema": CLASSIFY_JSON_SCHEMA,
+    },
+}
+
+_OPENROUTER_SYNTHESIS_JSON_SCHEMA_RESPONSE_FORMAT: dict[str, Any] = {
     "type": "json_schema",
     "json_schema": {
         "name": "synthesis_result",
@@ -66,8 +80,14 @@ class OpenRouterClient:
     def __exit__(self, *args: object) -> None:
         self.close()
 
+    def classify_cluster(self, payload: dict[str, Any]) -> ClassifyResult:
+        return self._inner.classify_cluster(
+            payload,
+            response_format=_OPENROUTER_CLASSIFY_SCHEMA_RESPONSE_FORMAT,
+        )
+
     def synthesize_cluster(self, payload: dict[str, Any]) -> SynthesisResult:
         return self._inner.synthesize_cluster(
             payload,
-            response_format=_OPENROUTER_JSON_SCHEMA_RESPONSE_FORMAT,
+            response_format=_OPENROUTER_SYNTHESIS_JSON_SCHEMA_RESPONSE_FORMAT,
         )

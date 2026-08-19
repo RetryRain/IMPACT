@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 
-from bytez.spiders.common import IST, ist_now_iso
+from bytez.spiders.common import IST
 
 from itemadapter import ItemAdapter
 from scrapy import signals
@@ -130,7 +129,7 @@ class ConsoleLogFilter(logging.Filter):
 
 
 class ProdLoggingExtension:
-    """Route full crawl detail to logs/scrapy.log; keep stderr clean."""
+    """Keep stderr clean: only warnings/errors plus brief bytez summaries."""
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -175,42 +174,6 @@ class ProdLoggingExtension:
                 handler.setLevel(logging.INFO)
 
 
-class ItemFileLogExtension:
-    """Persist every scraped article to logs/crawl_items.jsonl."""
-
-    def __init__(self) -> None:
-        self._file = None
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        extension = cls()
-        crawler.signals.connect(extension.spider_opened, signal=signals.spider_opened)
-        crawler.signals.connect(extension.item_scraped, signal=signals.item_scraped)
-        crawler.signals.connect(extension.spider_closed, signal=signals.spider_closed)
-        return extension
-
-    def spider_opened(self, spider) -> None:
-        LOGS_DIR.mkdir(exist_ok=True)
-        items_file = LOGS_DIR / "crawl_items.jsonl"
-        self._file = items_file.open("a", encoding="utf-8")
-
-    def item_scraped(self, item, response, spider) -> None:
-        if self._file is None:
-            return
-
-        record = dict(ItemAdapter(item))
-        record["_scraped_at"] = ist_now_iso()
-        record["_spider"] = spider.name
-        record["_source_url"] = response.url
-        json.dump(record, self._file, ensure_ascii=False)
-        self._file.write("\n")
-
-    def spider_closed(self, spider, reason) -> None:
-        if self._file is not None:
-            self._file.close()
-            self._file = None
-
-
 class CrawlSummaryExtension:
     @classmethod
     def from_crawler(cls, crawler):
@@ -226,7 +189,6 @@ class CrawlSummaryExtension:
     def __init__(self, stats):
         self.stats = stats
         self.report_file = LOGS_DIR / "crawl_reports.log"
-        self.json_file = LOGS_DIR / "crawl_stats.jsonl"
 
     def _scope_summaries(self, stats: dict) -> list[str]:
         scope_names: set[str] = set()
@@ -327,25 +289,3 @@ class CrawlSummaryExtension:
 
         with self.report_file.open("a", encoding="utf-8") as file:
             file.write(report + "\n")
-
-        record = {
-            "timestamp": timestamp,
-            "spider": spider.name,
-            "articles_scraped": items,
-            "duplicates_dropped": dropped,
-            "drop_rate": round(drop_rate, 2),
-            "requests": requests,
-            "responses": responses,
-            "bytes_downloaded": bytes_downloaded,
-            "elapsed_seconds": round(elapsed, 2),
-            "articles_per_second": round(articles_per_sec, 2),
-            "http_200": http_200,
-            "http_404": http_404,
-            "http_500": http_500,
-            "finish_reason": reason,
-            "scope_summaries": scope_lines,
-        }
-
-        with self.json_file.open("a", encoding="utf-8") as file:
-            json.dump(record, file)
-            file.write("\n")

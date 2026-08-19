@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import threading
 from collections import defaultdict
 from datetime import datetime
@@ -11,35 +10,18 @@ from clustering.config import get_settings
 from clustering.timezone_util import IST
 
 
-def _resolve_log_path(configured: str) -> Path | None:
+def _resolve_report_path(configured: str) -> Path:
     stripped = configured.strip()
     if not stripped:
-        return None
+        return _default_report_path()
     raw = Path(stripped)
     if raw.is_absolute():
         return raw
     return Path.cwd() / raw
 
 
-def _default_log_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "logs" / "synthesis.jsonl"
-
-
-def _default_report_path(jsonl_path: Path) -> Path:
-    return jsonl_path.parent / "synthesis_reports.log"
-
-
-def _resolve_report_path(configured_jsonl: str) -> Path:
-    resolved = _resolve_log_path(configured_jsonl)
-    jsonl_path = resolved if resolved is not None else _default_log_path()
-    settings = get_settings()
-    configured_report = settings.synthesis_report_path.strip()
-    if configured_report:
-        report = Path(configured_report)
-        if report.is_absolute():
-            return report
-        return Path.cwd() / report
-    return _default_report_path(jsonl_path)
+def _default_report_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "logs" / "synthesis_reports.log"
 
 
 def provider_model() -> tuple[str, str]:
@@ -65,7 +47,6 @@ def format_synthesis_report(
     concurrency: int,
     provider: str,
     model: str,
-    jsonl_path: Path,
     limit: int | None = None,
 ) -> str:
     examined = int(stats.get("examined", 0))
@@ -111,7 +92,6 @@ def format_synthesis_report(
         + f"Elapsed time          : {elapsed_s:.2f} s\n"
         + f"Clusters/sec          : {clusters_per_sec:.2f}\n"
         + f"Concurrency           : {concurrency}\n"
-        + f"JSONL log             : {jsonl_path}\n"
         + "Scope summaries       :\n"
         + scope_block
         + "\n"
@@ -119,81 +99,14 @@ def format_synthesis_report(
     )
 
 
-def append_synthesis_report(
-    *,
-    stats: dict[str, Any],
-    scope_stats: dict[str, dict[str, int]],
-    duration_ms: int,
-    concurrency: int,
-    jsonl_path: Path,
-    limit: int | None = None,
-    report_path: Path | None = None,
-) -> Path:
-    provider, model = provider_model()
-    destination = report_path or _resolve_report_path(
-        get_settings().synthesis_log_path
-    )
-    destination.parent.mkdir(parents=True, exist_ok=True)
-
-    report = format_synthesis_report(
-        stats=stats,
-        scope_stats=scope_stats,
-        duration_ms=duration_ms,
-        concurrency=concurrency,
-        provider=provider,
-        model=model,
-        jsonl_path=jsonl_path,
-        limit=limit,
-    )
-
-    with destination.open("a", encoding="utf-8") as handle:
-        handle.write(report + "\n")
-
-    stats_path = destination.parent / "synthesis_stats.jsonl"
-    record = {
-        "timestamp": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z"),
-        "provider": provider,
-        "model": model,
-        "limit": limit,
-        "clusters_examined": int(stats.get("examined", 0)),
-        "rewritten": int(stats.get("rewritten", 0)),
-        "dropped": int(stats.get("dropped", 0)),
-        "skipped_existing": int(stats.get("skipped_existing", 0)),
-        "failed": int(stats.get("failed", 0)),
-        "drop_rate": round(
-            (
-                int(stats.get("dropped", 0))
-                / max(int(stats.get("rewritten", 0)) + int(stats.get("dropped", 0)) + int(stats.get("failed", 0)), 1)
-            )
-            * 100,
-            2,
-        ),
-        "elapsed_seconds": round(duration_ms / 1000, 2),
-        "concurrency": concurrency,
-        "jsonl_log": str(jsonl_path),
-        "scope_stats": scope_stats,
-    }
-    with stats_path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
-
-    return destination
-
-
 class SynthesisRunLog:
-    """Append-only JSONL log for synthesis runs (thread-safe)."""
+    """Append-only human-readable synthesis log (thread-safe)."""
 
-    def __init__(
-        self,
-        path: Path | None = None,
-        report_path: Path | None = None,
-    ) -> None:
+    def __init__(self, path: Path | None = None) -> None:
         if path is not None:
             self._path = path
         else:
-            configured = get_settings().synthesis_log_path
-            resolved = _resolve_log_path(configured)
-            self._path = resolved if resolved is not None else _default_log_path()
-        self._report_path_override = report_path
+            self._path = _resolve_report_path(get_settings().synthesis_report_path)
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._scope_stats: dict[str, dict[str, int]] = defaultdict(
@@ -204,17 +117,10 @@ class SynthesisRunLog:
     def path(self) -> Path:
         return self._path
 
-    @property
-    def report_path(self) -> Path:
-        if self._report_path_override is not None:
-            return self._report_path_override
-        return _resolve_report_path(get_settings().synthesis_log_path)
-
-    def write_entry(self, entry: dict[str, Any]) -> None:
-        line = json.dumps(entry, ensure_ascii=False, default=str)
+    def _append_report(self, report: str) -> None:
         with self._lock:
             with self._path.open("a", encoding="utf-8") as handle:
-                handle.write(line + "\n")
+                handle.write(report + "\n")
 
     def _record_scope(self, fields: dict[str, Any]) -> None:
         outcome = str(fields.get("outcome", "unknown"))
@@ -223,16 +129,7 @@ class SynthesisRunLog:
             self._scope_stats[scope][outcome] += 1
 
     def log_cluster(self, **fields: Any) -> None:
-        provider, model = provider_model()
-        entry: dict[str, Any] = {
-            "type": "cluster",
-            "timestamp": datetime.now(IST).isoformat(),
-            "provider": provider,
-            "model": model,
-            **fields,
-        }
         self._record_scope(fields)
-        self.write_entry(entry)
 
     def log_summary(
         self,
@@ -241,31 +138,24 @@ class SynthesisRunLog:
         limit: int | None = None,
         **fields: Any,
     ) -> Path:
-        provider, model = provider_model()
-        entry: dict[str, Any] = {
-            "type": "summary",
-            "timestamp": datetime.now(IST).isoformat(),
-            "provider": provider,
-            "model": model,
-            "stats": stats,
-            **fields,
-        }
-        self.write_entry(entry)
-
         duration_ms = int(fields.get("duration_ms", 0))
         concurrency = int(fields.get("concurrency", 1))
+        provider, model = provider_model()
+
         with self._lock:
             scope_stats = {
                 scope: dict(outcomes)
                 for scope, outcomes in self._scope_stats.items()
             }
 
-        return append_synthesis_report(
+        report = format_synthesis_report(
             stats=stats,
             scope_stats=scope_stats,
             duration_ms=duration_ms,
             concurrency=concurrency,
-            jsonl_path=self._path,
+            provider=provider,
+            model=model,
             limit=limit,
-            report_path=self.report_path,
         )
+        self._append_report(report)
+        return self._path

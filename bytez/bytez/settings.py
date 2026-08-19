@@ -84,15 +84,11 @@ ITEM_PIPELINES = {
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
 
-LOG_LEVEL = "DEBUG"
-LOG_FILE = "logs/scrapy.log"
-LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
-LOG_DATEFORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_LEVEL = "INFO"
 
 EXTENSIONS = {
     "bytez.extensions.ProdLoggingExtension": 0,
     "bytez.extensions.CrawlProgressExtension": 50,
-    "bytez.extensions.ItemFileLogExtension": 100,
     "bytez.extensions.CrawlSummaryExtension": 500,
 }
 

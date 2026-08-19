@@ -118,13 +118,34 @@ class _UnionFind:
 class EventMergeLog:
     def __init__(self, path: Path | None = None) -> None:
         if path is None:
-            path = Path(__file__).resolve().parents[2] / "logs" / "event_merge.jsonl"
+            path = Path(__file__).resolve().parents[2] / "logs" / "event_merge.log"
         self._path = path
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
 
     def write(self, entry: dict[str, Any]) -> None:
-        line = json.dumps(entry, ensure_ascii=False, default=str)
+        timestamp = entry.get("timestamp")
+        if not isinstance(timestamp, str):
+            timestamp = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S %Z")
+
+        entry_type = entry.get("type", "event")
+        if entry_type == "pair":
+            line = (
+                f"[{timestamp}] pair scope={entry.get('scope')} "
+                f"{entry.get('from_cluster_id')} -> {entry.get('to_cluster_id')} "
+                f"reasons={entry.get('reasons')} "
+                f"centroid={entry.get('centroid_similarity')} "
+                f"pairwise={entry.get('max_pairwise_similarity')} "
+                f"jaccard={entry.get('title_jaccard')}"
+            )
+        elif entry_type == "merge":
+            line = (
+                f"[{timestamp}] merge scope={entry.get('scope')} "
+                f"{entry.get('from_cluster_id')} -> {entry.get('to_cluster_id')}"
+            )
+        else:
+            line = f"[{timestamp}] {entry_type} {entry}"
+
         with self._lock:
             with self._path.open("a", encoding="utf-8") as handle:
                 handle.write(line + "\n")

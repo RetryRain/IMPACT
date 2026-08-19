@@ -56,8 +56,7 @@ Environment variables: copy [`.env.example`](.env.example) to `.env` in this dir
 | `SYNTHESIS_BODY_CHAR_LIMIT` | `800` |
 | `SYNTHESIS_TIMEOUT_SECONDS` | `120` |
 | `SYNTHESIS_CONCURRENCY` | `3` (parallel LLM calls per run) |
-| `SYNTHESIS_LOG_PATH` | `logs/synthesis.jsonl` (JSONL audit log per run) |
-| `SYNTHESIS_REPORT_PATH` | `logs/synthesis_reports.log` (human-readable run summary, like crawl reports) |
+| `SYNTHESIS_REPORT_PATH` | `logs/synthesis_reports.log` (human-readable synthesis log) |
 
 ## CLI
 
@@ -103,14 +102,14 @@ alembic -c alembic_publish.ini upgrade head
 python -m clustering.cli synthesize --limit 10
 ```
 
-Each run appends to `logs/synthesis.jsonl` (or `SYNTHESIS_LOG_PATH`). One JSON object per line:
+Each run appends one summary block to `logs/synthesis_reports.log` (or `SYNTHESIS_REPORT_PATH`), matching the style of `bytez/logs/crawl_reports.log` (examined/rewritten/dropped counts, timing, provider, per-scope breakdown).
 
-- **`type: cluster`** — per-cluster outcome (`rewritten`, `dropped`, `failed`, or `skipped_existing`), LLM fields, sources, timing
-- **`type: summary`** — run totals and duration (last line of the run)
+The worker uses a **two-stage LLM pipeline** (DeepSeek direct API by default):
 
-Each run also appends a human-readable block to `logs/synthesis_reports.log` (or `SYNTHESIS_REPORT_PATH`), matching the style of `bytez/logs/crawl_reports.log`: examined/rewritten/dropped counts, timing, provider, and per-scope breakdown. Machine-readable totals go to `logs/synthesis_stats.jsonl`.
+1. **Relevance (every cluster)** — one compact call with **article titles only** (`{"titles":[...]}`). Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). No bodies, summaries, URLs, or other fields are sent for this step.
+2. **Rewrite (kept clusters only)** — a second call with `assigned_scope` plus per-article `title`, `summary`, and truncated `body` (up to `SYNTHESIS_BODY_CHAR_LIMIT`). No source, URL, timestamps, or cluster metadata.
 
-The worker sends one LLM request per cluster (DeepSeek direct API by default). Irrelevant clusters are dropped (marked `synthesized` in the clustering DB, no publish row). Important clusters are rewritten without bias using all sources, then stored in `synthesized_stories` with:
+Dropped clusters incur **one** LLM call; published clusters incur **two**. Important clusters are stored in `synthesized_stories` with:
 
 - LLM fields: `title`, `summary`, `body`, `scope` (verified), `priority` (1–100 editorial score), `slug` (stable SEO URL segment)
 - Cloned from representative article: `url`, `source`, `author`, `image`, `tags`, `language`, `published_at`, `scraped_at`
@@ -155,12 +154,14 @@ Filter by verified scope (e.g. `WHERE scope = 'Tamil Nadu'`).
    - Find up to **k=5** nearest neighbors within 48h, same `scope`.
    - Join the best neighbor that clears the threshold (0.90 if same `source`, else 0.82).
    - Else create a new cluster.
-4. **Event merge** — Before marking clusters ready, fold same-event clusters in the same scope (centroid / pairwise / title overlap). Logs to `logs/event_merge.jsonl`.
+4. **Event merge** — Before marking clusters ready, fold same-event clusters in the same scope (centroid / pairwise / title overlap). Logs to `logs/event_merge.log`.
 5. **Ready** — After cooldown (10 min), mark clusters `ready_for_llm`.
 
 ## LLM handoff contract
 
-Each `ready_for_llm` cluster exposes:
+### Inspect cluster (`show-cluster`)
+
+Each `ready_for_llm` cluster exposes full metadata for debugging and CLI inspection:
 
 ```json
 {
@@ -181,7 +182,28 @@ Each `ready_for_llm` cluster exposes:
 }
 ```
 
-The synthesis worker should consume **clusters**, not raw articles — exactly one LLM call per cluster.
+### LLM payloads (what the worker actually sends)
+
+The synthesis worker consumes **clusters**, not raw articles. It does **not** forward the full JSON above to the model.
+
+**Stage 1 — relevance (titles only):**
+
+```json
+{"titles":["Headline one","Headline two"]}
+```
+
+**Stage 2 — rewrite (kept clusters only):**
+
+```json
+{
+  "assigned_scope": "India",
+  "articles": [
+    {"title": "...", "summary": "...", "body": "..."}
+  ]
+}
+```
+
+Bodies are truncated to `SYNTHESIS_BODY_CHAR_LIMIT` (default 800 chars). The model verifies `assigned_scope` and returns a corrected `scope` (`India`, `Tamil Nadu`, or `World`). Provenance (`source`, `url`, etc.) is attached from the DB after rewrite, not sent to the LLM.
 
 ## Threshold calibration
 

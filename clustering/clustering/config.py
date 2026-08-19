@@ -39,8 +39,7 @@ class Settings(BaseSettings):
     synthesis_body_char_limit: int = 800
     synthesis_timeout_seconds: int = 120
     synthesis_concurrency: int = 3
-    synthesis_log_path: str = "logs/synthesis.jsonl"
-    synthesis_report_path: str = ""
+    synthesis_report_path: str = "logs/synthesis_reports.log"
 
     feedback_database_url: str = ""
     db_size_limit_mb: int = 475
@@ -64,8 +63,6 @@ class Settings(BaseSettings):
         "openrouter_api_key",
         "openrouter_base_url",
         "openrouter_model",
-        "synthesis_log_path",
-        "synthesis_report_path",
         "synthesis_report_path",
     )
     @classmethod
