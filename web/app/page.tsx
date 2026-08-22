@@ -4,6 +4,7 @@ import { FeedList } from "@/components/FeedList";
 import { FadingIntro } from "@/components/FadingIntro";
 import { Pagination } from "@/components/Pagination";
 import { parseFeedDateParam } from "@/lib/feed-dates";
+import { parseFeedSortParam } from "@/lib/feed-sort";
 import { getFeedStories, getFeedStoryDates } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/site";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 type PageProps = {
-  searchParams: Promise<{ page?: string; date?: string }>;
+  searchParams: Promise<{ page?: string; date?: string; sort?: string }>;
 };
 
 export const metadata: Metadata = {
@@ -25,12 +26,18 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
   const selectedDate = parseFeedDateParam(params.date);
+  const selectedSort = parseFeedSortParam(params.sort);
   const [feed, dates] = await Promise.all([
-    getFeedStories(undefined, page, selectedDate),
+    getFeedStories(undefined, page, selectedDate, selectedSort),
     getFeedStoryDates(),
   ]);
 
-  const paginationQuery = selectedDate ? { date: selectedDate } : undefined;
+  const paginationQuery =
+    selectedSort === "latest"
+      ? { sort: "latest" as const }
+      : selectedDate
+        ? { date: selectedDate }
+        : undefined;
 
   return (
     <div>
@@ -47,6 +54,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         basePath="/"
         dates={dates}
         selectedDate={selectedDate}
+        selectedSort={selectedSort}
       />
       <FeedList stories={feed.stories} />
       <Pagination

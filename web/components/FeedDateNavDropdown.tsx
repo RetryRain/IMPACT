@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import { FEED_SORT_LATEST_OPTION } from "@/lib/feed-sort";
 
 type FeedDateOption = {
   value: string;
@@ -38,9 +39,16 @@ export function FeedDateNavDropdown({
   value,
 }: FeedDateNavDropdownProps) {
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextDate = event.target.value;
-    const url = nextDate ? `${basePath}?date=${nextDate}` : basePath;
-    window.location.assign(url);
+    const next = event.target.value;
+    if (next === FEED_SORT_LATEST_OPTION) {
+      window.location.assign(`${basePath}?sort=latest`);
+      return;
+    }
+    if (!next) {
+      window.location.assign(basePath);
+      return;
+    }
+    window.location.assign(`${basePath}?date=${next}`);
   };
 
   return (
@@ -52,6 +60,7 @@ export function FeedDateNavDropdown({
           className="max-w-full appearance-none rounded-md border border-border/80 bg-paper py-1.5 pl-3 pr-7 text-xs font-sans text-muted transition-colors hover:border-border hover:text-ink focus:outline-none focus:ring-2 focus:ring-accent/25 cursor-pointer"
           aria-label="Select date"
         >
+          <option value={FEED_SORT_LATEST_OPTION}>Latest</option>
           <option value="">Today</option>
           {options.map((option) => (
             <option key={option.value} value={option.value}>

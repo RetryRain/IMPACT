@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FeedReadProgressStrip } from "@/components/FeedReadProgress";
 import { SCOPE_LABELS, SCOPE_PATHS, type ScopePath } from "@/lib/scope";
 
 function MapPinIcon({ className }: { className?: string }) {
@@ -85,6 +86,7 @@ export function MobileTabBar() {
       className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-paper/95 backdrop-blur pb-safe"
       aria-label="Mobile navigation"
     >
+      <FeedReadProgressStrip />
       <div className="flex items-stretch justify-around max-w-5xl mx-auto">
         {SCOPE_PATHS.map((path) => {
           const active = tabActive(pathname, path);

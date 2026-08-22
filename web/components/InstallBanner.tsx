@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { SITE_NAME } from "@/lib/site";
 import {
-  INSTALL_BANNER_DISMISS_KEY,
   PWA_INSTALLED_KEY,
+  recordSiteVisit,
+  shouldShowInstallBanner,
 } from "@/lib/visited-store";
 
 type BeforeInstallPromptEvent = Event & {
@@ -78,8 +79,9 @@ export function InstallBanner() {
 
     const init = async () => {
       if (!isMobileDevice()) return;
-      if (localStorage.getItem(INSTALL_BANNER_DISMISS_KEY) === "1") return;
       if (await detectInstalledPwa()) return;
+      const visitCount = recordSiteVisit();
+      if (!shouldShowInstallBanner(visitCount)) return;
       if (active) setVisible(true);
     };
 
@@ -108,7 +110,6 @@ export function InstallBanner() {
   }, []);
 
   const dismiss = useCallback(() => {
-    localStorage.setItem(INSTALL_BANNER_DISMISS_KEY, "1");
     setVisible(false);
     setShowSteps(false);
   }, []);
@@ -119,7 +120,8 @@ export function InstallBanner() {
       await deferredPrompt.userChoice;
       setDeferredPrompt(null);
       localStorage.setItem(PWA_INSTALLED_KEY, "1");
-      dismiss();
+      setVisible(false);
+      setShowSteps(false);
       return;
     }
     setShowSteps(true);

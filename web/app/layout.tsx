@@ -5,6 +5,10 @@ import { SerwistProvider } from "@serwist/next/react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import {
+  FeedReadProgressDesktopDock,
+  FeedReadProgressProvider,
+} from "@/components/FeedReadProgress";
 import { InstallBanner } from "@/components/InstallBanner";
 import { AllReadEgg } from "@/components/AllReadEgg";
 import { SiteJsonLd } from "@/components/SiteJsonLd";
@@ -63,13 +67,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         suppressHydrationWarning
       >
         <SerwistProvider swUrl="/sw.js">
-          <SiteJsonLd />
-          <SiteHeader />
-          <InstallBanner />
-          <main className="mx-auto max-w-5xl px-4 py-8 pb-tab-bar">{children}</main>
-          <SiteFooter />
-          <MobileTabBar />
-          <AllReadEgg />
+          <FeedReadProgressProvider>
+            <SiteJsonLd />
+            <SiteHeader />
+            <InstallBanner />
+            <main className="mx-auto max-w-5xl px-4 py-8 pb-tab-bar">{children}</main>
+            <SiteFooter />
+            <MobileTabBar />
+            <FeedReadProgressDesktopDock />
+            <AllReadEgg />
+          </FeedReadProgressProvider>
         </SerwistProvider>
       </body>
     </html>

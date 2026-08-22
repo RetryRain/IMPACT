@@ -43,7 +43,7 @@ That script applies migration `003` (slug backfill) and stamps `alembic_version`
 
 | Path | Description |
 |------|-------------|
-| `/` | Home feed (priority → recency) |
+| `/` | Home feed — **Today** (priority → recency, last 24h) or **Latest** (`?sort=latest`, recency only, last 24h) |
 | `/tamil-nadu`, `/india`, `/world` | Scope hubs |
 | `/{scope}/{slug}` | Article page (canonical SEO URL) |
 | `/s/{id}` | 301 redirect to canonical article URL |
@@ -82,4 +82,8 @@ Use the same database as `clustering` synthesis (`SYNTHESIS_DATABASE_URL`). Pref
 
 ## Feed ordering (matches synthesis)
 
-Stories are ordered by `priority DESC, published_at DESC` — editorial score from the LLM, not article count.
+Default **Today** view: `priority DESC, published_at DESC` — editorial score from the LLM, not article count (rolling last 24 hours).
+
+**Latest** (`?sort=latest`): same 24-hour window, ordered by `published_at DESC` only.
+
+Archive dates (`?date=YYYY-MM-DD`): calendar day in IST, priority order.

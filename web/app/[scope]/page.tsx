@@ -5,6 +5,7 @@ import { FadingIntro } from "@/components/FadingIntro";
 import { FeedList } from "@/components/FeedList";
 import { Pagination } from "@/components/Pagination";
 import { parseFeedDateParam } from "@/lib/feed-dates";
+import { parseFeedSortParam } from "@/lib/feed-sort";
 import { getFeedStories, getFeedStoryDates } from "@/lib/queries";
 import {
   isScopePath,
@@ -19,7 +20,7 @@ export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ scope: string }>;
-  searchParams: Promise<{ page?: string; date?: string }>;
+  searchParams: Promise<{ page?: string; date?: string; sort?: string }>;
 };
 
 const SCOPE_META: Record<ScopePath, { title: string; description: string }> = {
@@ -64,13 +65,19 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
   const query = await searchParams;
   const page = Math.max(1, Number(query.page ?? "1") || 1);
   const selectedDate = parseFeedDateParam(query.date);
+  const selectedSort = parseFeedSortParam(query.sort);
   const scopePath = scope as ScopePath;
   const [feed, dates] = await Promise.all([
-    getFeedStories(scopePath, page, selectedDate),
+    getFeedStories(scopePath, page, selectedDate, selectedSort),
     getFeedStoryDates(scopePath),
   ]);
   const label = SCOPE_LABELS[scope];
-  const paginationQuery = selectedDate ? { date: selectedDate } : undefined;
+  const paginationQuery =
+    selectedSort === "latest"
+      ? { sort: "latest" as const }
+      : selectedDate
+        ? { date: selectedDate }
+        : undefined;
 
   return (
     <div>
@@ -86,6 +93,7 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
         basePath={`/${scope}`}
         dates={dates}
         selectedDate={selectedDate}
+        selectedSort={selectedSort}
       />
       <FeedList stories={feed.stories} />
       <Pagination

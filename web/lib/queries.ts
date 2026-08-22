@@ -1,6 +1,7 @@
 import { and, count, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import { getDb } from "./db";
 import { IST_TIMEZONE } from "./feed-dates";
+import type { FeedSort } from "./feed-sort";
 import {
   storyRedirects,
   synthesizedStories,
@@ -22,7 +23,10 @@ export type FeedResult = {
 
 const effectiveAt = sql`COALESCE(${synthesizedStories.publishedAt}, ${synthesizedStories.createdAt})`;
 
-function feedOrder() {
+function feedOrder(sort: FeedSort = "priority") {
+  if (sort === "latest") {
+    return [desc(effectiveAt)];
+  }
   return [
     desc(synthesizedStories.priority),
     desc(synthesizedStories.publishedAt),
@@ -56,6 +60,7 @@ export async function getFeedStories(
   scopePath?: ScopePath,
   page = 1,
   date?: string | null,
+  sort: FeedSort = "priority",
 ): Promise<FeedResult> {
   const db = getDb();
   const pageSize = FEED_PAGE_SIZE;
@@ -67,7 +72,7 @@ export async function getFeedStories(
       .select()
       .from(synthesizedStories)
       .where(whereClause)
-      .orderBy(...feedOrder())
+      .orderBy(...feedOrder(sort))
       .limit(pageSize)
       .offset(offset),
     db
