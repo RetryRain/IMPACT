@@ -3,11 +3,10 @@ const ARTICLES_STORE = "articles";
 const FLAGS_STORE = "flags";
 const DB_VERSION = 2;
 
-const INSTALL_BANNER_KEY = "tnforme:install-banner-dismissed";
+const INSTALL_BANNER_SESSION_DISMISS_KEY = "tnforme:install-banner-dismissed-session";
 const VISIT_COUNT_KEY = "tnforme:visit-count";
 const SESSION_VISIT_KEY = "tnforme:session-visit-recorded";
 const ALL_READ_EGG_PREFIX = "all-read-egg:";
-const INSTALL_BANNER_INTERVAL = 5;
 
 type ReadRecord = {
   id: string;
@@ -112,7 +111,7 @@ export async function markAllReadEggShown(setKey: string): Promise<void> {
   });
 }
 
-export const INSTALL_BANNER_DISMISS_KEY = INSTALL_BANNER_KEY;
+export const INSTALL_BANNER_DISMISS_KEY = INSTALL_BANNER_SESSION_DISMISS_KEY;
 export const PWA_INSTALLED_KEY = "tnforme:pwa-installed";
 
 /** Increment once per browser session; returns total visit count. */
@@ -134,7 +133,15 @@ export function recordSiteVisit(): number {
 }
 
 export function shouldShowInstallBanner(visitCount: number): boolean {
-  return (
-    visitCount > 0 && visitCount % INSTALL_BANNER_INTERVAL === 0
-  );
+  if (typeof window === "undefined") return false;
+  if (sessionStorage.getItem(INSTALL_BANNER_SESSION_DISMISS_KEY) === "1") {
+    return false;
+  }
+  // Visit 1, 3, 5… — first session, then every other session.
+  return visitCount > 0 && visitCount % 2 === 1;
+}
+
+export function dismissInstallBanner(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(INSTALL_BANNER_SESSION_DISMISS_KEY, "1");
 }

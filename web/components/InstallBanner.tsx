@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SITE_NAME } from "@/lib/site";
 import {
   PWA_INSTALLED_KEY,
+  dismissInstallBanner,
   recordSiteVisit,
   shouldShowInstallBanner,
 } from "@/lib/visited-store";
@@ -110,6 +111,7 @@ export function InstallBanner() {
   }, []);
 
   const dismiss = useCallback(() => {
+    dismissInstallBanner();
     setVisible(false);
     setShowSteps(false);
   }, []);
