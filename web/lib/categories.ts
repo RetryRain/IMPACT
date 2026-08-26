@@ -8,7 +8,6 @@ export const CATEGORY_SLUGS = [
   "environment",
   "sports",
   "culture",
-  "international",
 ] as const;
 
 export type CategorySlug = (typeof CATEGORY_SLUGS)[number];
@@ -23,7 +22,6 @@ export const CATEGORY_LABELS: Record<CategorySlug, string> = {
   environment: "Environment",
   sports: "Sports",
   culture: "Culture",
-  international: "International",
 };
 
 export const CATEGORY_FILTER_STORAGE_KEY = "tndecaf:category-filter";
@@ -38,7 +36,6 @@ const CATEGORY_CHIP_STYLES: Record<CategorySlug, string> = {
   environment: "bg-lime-100 text-lime-900",
   sports: "bg-orange-100 text-orange-900",
   culture: "bg-fuchsia-100 text-fuchsia-900",
-  international: "bg-indigo-100 text-indigo-900",
 };
 
 export function isCategorySlug(value: string): value is CategorySlug {

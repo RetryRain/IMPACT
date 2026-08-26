@@ -434,7 +434,7 @@ def test_openrouter_client_strips_markdown_fences():
                                         "action": "rewrite",
                                         "drop_reason": None,
                                         "scope": "World",
-                                        "category": "international",
+                                        "category": "politics",
                                         "priority": 45,
                                         "title": "Rewritten",
                                         "summary": "Short summary",

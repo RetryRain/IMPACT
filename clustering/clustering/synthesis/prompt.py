@@ -19,7 +19,6 @@ CANONICAL_CATEGORIES = frozenset({
     "environment",
     "sports",
     "culture",
-    "international",
 })
 
 RELEVANCE_SYSTEM_PROMPT = """You are TNDecaf, a neutral news intelligence editor.
@@ -77,8 +76,8 @@ Return scope exactly one of: India, Tamil Nadu, World — where the event primar
 - World: international event
 
 CATEGORY
-Return exactly one primary category slug:
-- politics: elections, government, policy, diplomacy
+Return exactly one primary topic slug. Scope already covers geography (World vs India vs Tamil Nadu)—do not use a geography as category.
+- politics: elections, government, policy, diplomacy, foreign affairs
 - economy: markets, trade, business, jobs, inflation
 - crime: crime with wider public concern
 - courts: court rulings, legal proceedings
@@ -87,7 +86,6 @@ Return exactly one primary category slug:
 - environment: climate, pollution, natural disasters
 - sports: only major sporting events with public consequence (not routine scores)
 - culture: arts, heritage, education with public impact
-- international: cross-border events, foreign affairs
 
 PRIORITY (1–100, importance within assigned scope—not article/outlet count)
 - 80–100: major urgent event with wide consequences
@@ -217,8 +215,11 @@ def normalize_category(value: str | None) -> str | None:
         "sci_tech": "tech",
         "law": "courts",
         "legal": "courts",
-        "world": "international",
-        "foreign": "international",
+        "world": "politics",
+        "foreign": "politics",
+        "international": "politics",
+        "diplomacy": "politics",
+        "foreign_affairs": "politics",
     }
     normalized = aliases.get(stripped, stripped)
     if normalized in CANONICAL_CATEGORIES:
