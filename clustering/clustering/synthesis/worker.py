@@ -117,6 +117,7 @@ def build_synthesized_story(
         tags=union_article_tags(articles),
         language=representative.language,
         scope=result.scope,
+        category=result.category,
         priority=result.priority or 0,
         published_at=representative.published_at,
         scraped_at=representative.scraped_at,
@@ -149,6 +150,7 @@ def apply_synthesis_result_to_story(
     existing.tags = union_article_tags(articles)
     existing.language = representative.language
     existing.scope = result.scope
+    existing.category = result.category
     existing.priority = result.priority or 0
     existing.published_at = representative.published_at
     existing.scraped_at = representative.scraped_at

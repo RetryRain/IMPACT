@@ -63,6 +63,7 @@ def test_deepseek_client_uses_json_object_format():
                                     "action": "rewrite",
                                     "drop_reason": None,
                                     "scope": "India",
+                                    "category": "politics",
                                     "priority": 65,
                                     "title": "Rewritten",
                                     "summary": "Short summary",

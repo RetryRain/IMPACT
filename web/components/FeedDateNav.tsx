@@ -3,6 +3,8 @@ import {
   todayIstDateString,
 } from "@/lib/feed-dates";
 import { FEED_SORT_LATEST_OPTION, type FeedSort } from "@/lib/feed-sort";
+import { Suspense } from "react";
+import { CategoryFilter } from "./CategoryFilter";
 import { FeedDateNavDropdown } from "./FeedDateNavDropdown";
 
 type FeedDateNavProps = {
@@ -38,10 +40,15 @@ export function FeedDateNav({
   }));
 
   return (
-    <FeedDateNavDropdown
-      basePath={basePath}
-      options={options}
-      value={value}
-    />
+    <nav className="mb-6 flex flex-wrap items-center gap-2" aria-label="Browse feed">
+      <FeedDateNavDropdown
+        basePath={basePath}
+        options={options}
+        value={value}
+      />
+      <Suspense fallback={null}>
+        <CategoryFilter />
+      </Suspense>
+    </nav>
   );
 }

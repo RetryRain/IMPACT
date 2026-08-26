@@ -5,7 +5,7 @@ import { SITE_NAME, absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Terms",
   description:
-    "Terms of use for TNDecaf, a free independent Tamil Nadu news briefing.",
+    "Terms of use for TNDecaf, a free independent news briefing on Tamil Nadu, India, and the world.",
   alternates: { canonical: absoluteUrl("/terms") },
 };
 
@@ -16,8 +16,8 @@ export default function TermsPage() {
         Terms of use
       </h1>
       <p className="text-lg">
-        {SITE_NAME} is a free Tamil Nadu news briefing. By using the site, you
-        agree to these plain terms.
+        {SITE_NAME} is a free news briefing. By using the site, you agree to
+        these plain terms.
       </p>
 
       <section className="space-y-3">
@@ -56,10 +56,10 @@ export default function TermsPage() {
           Editorial focus
         </h2>
         <p>
-          We publish stories that may affect daily life in Tamil Nadu. India and
-          world news appears when it has local impact. We do not rank by outrage,
-          celebrity, or click potential. That editorial choice is ours, not a
-          guarantee that every story matters to every reader.
+          We publish quality news on Tamil Nadu, India, and the world. We filter
+          out gossip, clickbait, and noise. We do not rank by outrage, celebrity,
+          or click potential. That editorial choice is ours, not a guarantee that
+          every story matters to every reader.
         </p>
       </section>
 

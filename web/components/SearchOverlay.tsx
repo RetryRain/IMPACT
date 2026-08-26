@@ -51,6 +51,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   const [stories, setStories] = useState<StorySearchIndexItem[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -74,11 +75,18 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (panelRef.current?.contains(target)) return;
+      onClose();
+    };
 
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.body.style.overflow = "";
     };
   }, [open, onClose]);
@@ -116,7 +124,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
         aria-label="Close search"
         onClick={onClose}
       />
-      <div className="relative mx-auto mt-16 max-w-xl px-4">
+      <div ref={panelRef} className="relative mx-auto mt-16 max-w-xl px-4">
         <div className="rounded-2xl border border-border bg-paper shadow-xl overflow-hidden">
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <SearchIcon className="h-5 w-5 text-muted shrink-0" />

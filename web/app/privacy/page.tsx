@@ -44,6 +44,18 @@ export default function PrivacyPage() {
 
       <section className="space-y-3">
         <h2 className="font-serif text-2xl font-bold text-ink">
+          Category preferences
+        </h2>
+        <p>
+          If you save category filters, that choice is stored in{" "}
+          <strong className="text-ink">localStorage</strong> in your browser so
+          the feed can remember your preferences. It never leaves your device
+          and is not sent to our servers.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-serif text-2xl font-bold text-ink">
           No analytics or ad tracking
         </h2>
         <p>

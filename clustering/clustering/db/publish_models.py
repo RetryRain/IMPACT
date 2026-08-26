@@ -33,6 +33,9 @@ class SynthesizedStory(PublishBase):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
     impact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
 
     url: Mapped[str] = mapped_column(String(2048), nullable=False)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)

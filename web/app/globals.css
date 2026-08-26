@@ -40,6 +40,47 @@
     }
   }
 
+  @keyframes toast-fade {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 8px);
+    }
+    12% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    78% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -4px);
+    }
+  }
+
+  .animate-toast {
+    animation: toast-fade 2.4s ease forwards;
+  }
+
+  @keyframes next-hint-fade {
+    0% {
+      opacity: 0;
+    }
+    12% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .animate-next-hint {
+    animation: next-hint-fade 3s ease forwards;
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;

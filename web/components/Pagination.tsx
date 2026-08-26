@@ -4,18 +4,25 @@ type PaginationProps = {
   basePath: string;
   page: number;
   totalPages: number;
-  query?: Record<string, string | undefined>;
+  query?: Record<string, string | string[] | undefined>;
 };
 
 function buildPageHref(
   basePath: string,
   page: number,
-  query?: Record<string, string | undefined>,
+  query?: Record<string, string | string[] | undefined>,
 ): string {
   const params = new URLSearchParams();
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value) params.set(key, value);
+      if (!value) continue;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item) params.append(key, item);
+        }
+      } else {
+        params.set(key, value);
+      }
     }
   }
   if (page > 1) {

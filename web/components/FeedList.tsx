@@ -8,6 +8,8 @@ import { useFeedReadProgress } from "./FeedReadProgress";
 import type { Story } from "@/lib/schema";
 import { consumeFeedReturnFromArticle } from "@/lib/feed-order";
 import { getReadStoryIds } from "@/lib/visited-store";
+import { saveReadingQueue } from "@/lib/reading-queue";
+import { scopeToPath } from "@/lib/scope";
 
 function partitionStories(stories: Story[], readIds: Set<string>): Story[] {
   const unread: Story[] = [];
@@ -61,6 +63,17 @@ export function FeedList({ stories }: { stories: Story[] }) {
     window.addEventListener("tnforme:story-read", onStoryRead);
     return () => window.removeEventListener("tnforme:story-read", onStoryRead);
   }, [refreshReadIds]);
+
+  useEffect(() => {
+    const items = displayStories
+      .map((story) => {
+        const scope = scopeToPath(story.scope);
+        if (!scope || !story.slug) return null;
+        return { id: story.id, slug: story.slug, scope, title: story.title };
+      })
+      .filter((item) => item !== null);
+    saveReadingQueue(items);
+  }, [displayStories]);
 
   if (stories.length === 0) {
     return (

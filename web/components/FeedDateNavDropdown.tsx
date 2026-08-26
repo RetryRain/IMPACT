@@ -40,20 +40,24 @@ export function FeedDateNavDropdown({
 }: FeedDateNavDropdownProps) {
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value;
+    const url = new URL(window.location.href);
+    url.pathname = basePath;
+    url.searchParams.delete("page");
     if (next === FEED_SORT_LATEST_OPTION) {
-      window.location.assign(`${basePath}?sort=latest`);
-      return;
+      url.searchParams.delete("date");
+      url.searchParams.set("sort", "latest");
+    } else if (!next) {
+      url.searchParams.delete("date");
+      url.searchParams.delete("sort");
+    } else {
+      url.searchParams.delete("sort");
+      url.searchParams.set("date", next);
     }
-    if (!next) {
-      window.location.assign(basePath);
-      return;
-    }
-    window.location.assign(`${basePath}?date=${next}`);
+    window.location.assign(`${url.pathname}${url.search}`);
   };
 
   return (
-    <nav className="mb-6" aria-label="Browse by date">
-      <div className="relative inline-flex max-w-full items-center">
+    <div className="relative inline-flex max-w-full items-center">
         <select
           value={value}
           onChange={handleChange}
@@ -69,7 +73,6 @@ export function FeedDateNavDropdown({
           ))}
         </select>
         <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted/45" />
-      </div>
-    </nav>
+    </div>
   );
 }

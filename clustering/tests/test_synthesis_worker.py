@@ -137,6 +137,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
         action="rewrite",
         drop_reason=None,
         scope="Tamil Nadu",
+        category="politics",
         priority=82,
         title="Rewritten title",
         summary="Rewritten summary",
@@ -160,6 +161,7 @@ def test_build_synthesized_story_merges_clone_and_rewrite_fields():
     assert story.tags == ["politics", "economy"]
     assert story.language == article.language
     assert story.scope == "Tamil Nadu"
+    assert story.category == "politics"
     assert story.priority == 82
     assert story.source_urls == [article.url, other.url]
     assert story.sources == ["TOI", "The Hindu"]
@@ -185,6 +187,7 @@ def test_apply_synthesis_result_to_story_updates_existing_row():
             action="rewrite",
             drop_reason=None,
             scope="India",
+            category="economy",
             priority=50,
             title="Old title",
             summary="Old summary",
@@ -197,6 +200,7 @@ def test_apply_synthesis_result_to_story_updates_existing_row():
         action="rewrite",
         drop_reason=None,
         scope="Tamil Nadu",
+        category="politics",
         priority=82,
         title="Updated title",
         summary="Updated summary",
@@ -265,6 +269,7 @@ def test_synthesize_clusters_keep_calls_classify_then_rewrite(
             action="rewrite",
             drop_reason=None,
             scope="India",
+            category="politics",
             priority=70,
             title="Rewritten",
             summary="Summary",

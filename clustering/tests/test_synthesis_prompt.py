@@ -89,9 +89,8 @@ def test_compact_rewrite_payload_truncates_body(monkeypatch):
 
 def test_relevance_prompt_contains_editorial_rules():
     assert "TNDecaf" in RELEVANCE_SYSTEM_PROMPT
-    assert "Tamil Nadu" in RELEVANCE_SYSTEM_PROMPT
-    assert "Foreign war" in RELEVANCE_SYSTEM_PROMPT
-    assert "Routine sports result" in RELEVANCE_SYSTEM_PROMPT
+    assert "public-interest" in RELEVANCE_SYSTEM_PROMPT
+    assert "Routine sports" in RELEVANCE_SYSTEM_PROMPT
     assert "celebrity" in RELEVANCE_SYSTEM_PROMPT.lower()
 
 
@@ -100,6 +99,7 @@ def test_rewrite_prompt_contains_synthesis_rules():
     assert "Never invent" in REWRITE_SYSTEM_PROMPT
     assert "Sources disagree" in REWRITE_SYSTEM_PROMPT
     assert "PRIORITY" in REWRITE_SYSTEM_PROMPT
+    assert "CATEGORY" in REWRITE_SYSTEM_PROMPT
     assert "assigned_scope" in REWRITE_SYSTEM_PROMPT
 
 
@@ -157,12 +157,14 @@ def test_synthesis_result_rewrite_requires_scope_and_priority():
         action="rewrite",
         drop_reason=None,
         scope="Tamil Nadu",
+        category="politics",
         priority=75,
         title="Headline",
         summary="Summary",
         body="Body",
     )
     assert result.scope == "Tamil Nadu"
+    assert result.category == "politics"
     assert result.priority == 75
 
 
@@ -179,6 +181,7 @@ def test_coerce_priority_points_alias():
             "action": "rewrite",
             "drop_reason": None,
             "scope": "India",
+            "category": "economy",
             "priority_points": 55,
             "title": "Headline",
             "summary": "Summary",
@@ -186,6 +189,7 @@ def test_coerce_priority_points_alias():
         }
     )
     assert result.priority == 55
+    assert result.category == "economy"
 
 
 def test_build_classify_user_message_is_compact():
@@ -292,6 +296,7 @@ def test_coerce_publish_true_maps_to_rewrite():
         {
             "publish": True,
             "scope": "TamilNadu",
+            "category": "politics",
             "priority": 60,
             "title": "Headline",
             "summary": "Summary",
@@ -301,6 +306,7 @@ def test_coerce_publish_true_maps_to_rewrite():
     assert result.action == "rewrite"
     assert result.title == "Headline"
     assert result.scope == "Tamil Nadu"
+    assert result.category == "politics"
 
 
 def _rewrite_response() -> dict:
@@ -313,6 +319,7 @@ def _rewrite_response() -> dict:
                             "action": "rewrite",
                             "drop_reason": None,
                             "scope": "India",
+                            "category": "politics",
                             "priority": 65,
                             "title": "Rewritten",
                             "summary": "Short summary",
@@ -427,6 +434,7 @@ def test_openrouter_client_strips_markdown_fences():
                                         "action": "rewrite",
                                         "drop_reason": None,
                                         "scope": "World",
+                                        "category": "international",
                                         "priority": 45,
                                         "title": "Rewritten",
                                         "summary": "Short summary",

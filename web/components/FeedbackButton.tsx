@@ -4,9 +4,10 @@ import { useState, type FormEvent } from "react";
 
 type FeedbackButtonProps = {
   pageUrl?: string;
+  className?: string;
 };
 
-export function FeedbackButton({ pageUrl }: FeedbackButtonProps) {
+export function FeedbackButton({ pageUrl, className = "" }: FeedbackButtonProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +55,7 @@ export function FeedbackButton({ pageUrl }: FeedbackButtonProps) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hover:text-accent underline-offset-2 hover:underline"
+        className={`hover:text-accent underline-offset-2 hover:underline ${className}`}
       >
         Feedback
       </button>

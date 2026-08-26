@@ -35,7 +35,7 @@ export function storyPath(scopePath: ScopePath, slug: string): string {
 }
 
 const SCOPE_CHIP_STYLES: Record<string, { bg: string; text: string }> = {
-  "Tamil Nadu": { bg: "bg-accent-soft", text: "text-accent-ink" },
+  "Tamil Nadu": { bg: "bg-scope-tn-bg", text: "text-scope-tn-text" },
   India: { bg: "bg-scope-india-bg", text: "text-scope-india-text" },
   World: { bg: "bg-scope-world-bg", text: "text-scope-world-text" },
 };
@@ -52,11 +52,11 @@ export function scopeChipClass(scope: string | null | undefined): string {
 export function scopeFeedSubtitle(scopePath: ScopePath): string {
   switch (scopePath) {
     case "tamil-nadu":
-      return "News from the state that actually lands on people here.";
+      return "State news that matters — government, services, and daily life here.";
     case "india":
-      return "National stories we keep only when they change life in Tamil Nadu.";
+      return "National stories with real consequences. No filler, no outrage bait.";
     case "world":
-      return "Global news we keep only when it reaches here.";
+      return "Global developments worth knowing. Quality over noise.";
   }
 }
 

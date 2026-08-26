@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { getDb } from "./db";
 import { IST_TIMEZONE } from "./feed-dates";
 import type { FeedSort } from "./feed-sort";
@@ -47,11 +47,18 @@ function feedTimeCondition(date?: string | null): SQL {
   return sql`${effectiveAt} >= NOW() - (${FEED_DEFAULT_HOURS} * INTERVAL '1 hour')`;
 }
 
-function feedConditions(scopePath?: ScopePath, date?: string | null) {
+function feedConditions(
+  scopePath?: ScopePath,
+  date?: string | null,
+  categories?: string[],
+) {
   const conditions: (SQL | undefined)[] = [
     isNull(synthesizedStories.canonicalStoryId),
     scopeCondition(scopePath),
     feedTimeCondition(date),
+    categories && categories.length > 0
+      ? inArray(synthesizedStories.category, categories)
+      : undefined,
   ];
   return and(...conditions.filter(Boolean));
 }
@@ -61,11 +68,12 @@ export async function getFeedStories(
   page = 1,
   date?: string | null,
   sort: FeedSort = "priority",
+  categories?: string[],
 ): Promise<FeedResult> {
   const db = getDb();
   const pageSize = FEED_PAGE_SIZE;
   const offset = (page - 1) * pageSize;
-  const whereClause = feedConditions(scopePath, date);
+  const whereClause = feedConditions(scopePath, date, categories);
 
   const [stories, totalRow] = await Promise.all([
     db
@@ -91,11 +99,17 @@ export async function getFeedStories(
   };
 }
 
-export async function getFeedStoryDates(scopePath?: ScopePath): Promise<string[]> {
+export async function getFeedStoryDates(
+  scopePath?: ScopePath,
+  categories?: string[],
+): Promise<string[]> {
   const db = getDb();
   const conditions: (SQL | undefined)[] = [
     isNull(synthesizedStories.canonicalStoryId),
     scopeCondition(scopePath),
+    categories && categories.length > 0
+      ? inArray(synthesizedStories.category, categories)
+      : undefined,
   ];
   const whereClause = and(...conditions.filter(Boolean));
 
@@ -232,9 +246,12 @@ export async function getRecentNewsStories(withinHours = 48): Promise<Story[]> {
     .limit(500);
 }
 
-export async function getCanonicalStoryIds(scopePath?: ScopePath): Promise<string[]> {
+export async function getCanonicalStoryIds(
+  scopePath?: ScopePath,
+  categories?: string[],
+): Promise<string[]> {
   const db = getDb();
-  const whereClause = feedConditions(scopePath, null);
+  const whereClause = feedConditions(scopePath, null, categories);
   const rows = await db
     .select({ id: synthesizedStories.id })
     .from(synthesizedStories)

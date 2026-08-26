@@ -6,7 +6,7 @@ import { SITE_DESCRIPTION, SITE_NAME, absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "About TNDecaf: free Tamil Nadu news without engagement bait. Short original stories on work, money, safety, and public life.",
+    "About TNDecaf: free quality news on Tamil Nadu, India, and the world. No engagement bait, no ads, no account.",
   alternates: { canonical: absoluteUrl("/about") },
 };
 
@@ -27,7 +27,7 @@ export default function AboutPage() {
             {SITE_NAME} · 100% free · no ads
           </p>
           <h1 className="mt-6 font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-ink tracking-tight leading-[1.1]">
-            Tamil Nadu news.
+            Quality news.
             <br />
             Without the bait.
           </h1>
@@ -36,8 +36,7 @@ export default function AboutPage() {
             aria-hidden="true"
           />
           <p className="mt-8 font-sans text-lg sm:text-xl text-muted leading-relaxed">
-            {SITE_DESCRIPTION} India and world coverage appears only when it
-            reaches life here. Think of it as decaf news: the signal, without the
+            {SITE_DESCRIPTION} Think of it as decaf news: the signal, without the
             outrage caffeine.
           </p>
           <div className="mt-10">
@@ -45,7 +44,7 @@ export default function AboutPage() {
               href="/"
               className="inline-flex items-center font-sans text-sm font-medium text-paper bg-accent px-6 py-3 rounded-full hover:bg-accent/90 transition-colors"
             >
-              Read today&apos;s Tamil Nadu briefing
+              Read today&apos;s briefing
             </Link>
             <p className="mt-4 font-sans text-sm text-muted">
               Free forever · Updated throughout the day
@@ -58,18 +57,18 @@ export default function AboutPage() {
         <div className="mx-auto max-w-article">
           <SectionLabel>Who we are</SectionLabel>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-ink tracking-tight leading-tight mb-8">
-            A Tamil Nadu news briefing, not a scroll trap
+            A news briefing, not a scroll trap
           </h2>
           <div className="font-sans text-lg text-muted leading-relaxed space-y-6">
             <p>
-              {SITE_NAME} is for people in Tamil Nadu who want to stay informed
-              without living inside a news feed. We publish short original
-              stories on work, money, safety, and public services.
+              {SITE_NAME} is for people who want to stay informed without living
+              inside a news feed. We publish short original stories on Tamil Nadu,
+              India, and the world — work, money, safety, and public life.
             </p>
             <p>
               We drop gossip, speeches-for-the-camera, and distant outrage. We
-              do not rank by celebrity, outrage, or click potential. If it does
-              not affect people in Tamil Nadu, it is not here.
+              do not rank by celebrity, outrage, or click potential. Every story
+              must earn its place.
             </p>
           </div>
         </div>
@@ -112,11 +111,11 @@ export default function AboutPage() {
               03
             </p>
             <h3 className="font-serif text-xl sm:text-2xl font-bold text-ink mb-4">
-              Relevant by default
+              Filtered by category
             </h3>
             <p className="font-sans text-base text-muted leading-relaxed">
-              Every story is chosen and written with Tamil Nadu in mind. If it
-              does not land on life here, it is not in the feed.
+              Politics, economy, health, and more — save your preferred
+              categories and read only what matters to you.
             </p>
           </div>
         </div>
@@ -129,7 +128,7 @@ export default function AboutPage() {
           </h2>
           <p className="mt-4 font-sans text-base sm:text-lg text-muted leading-relaxed">
             <strong className="text-ink font-semibold">We use algorithms to fight algorithms.</strong>{" "}
-            While newsfeed algorithms are engineered to farm outrage, our tools fight back — neutralizing clickbait and filtering for real-world impact so nothing slips through. We verify the facts and write clear, fluff-free updates for Tamil Nadu.
+            While newsfeed algorithms are engineered to farm outrage, our tools fight back — neutralizing clickbait and filtering for real-world impact so nothing slips through. We verify the facts and write clear, fluff-free updates.
           </p>
         </div>
       </section>
@@ -177,14 +176,14 @@ export default function AboutPage() {
             Start with today&apos;s briefing
           </h2>
           <p className="font-sans text-lg text-muted leading-relaxed mb-10 max-w-2xl mx-auto">
-            Tamil Nadu, India, and world stories when they matter here. Free to
-            read. No account required.
+            Tamil Nadu, India, and world stories that matter. Free to read. No
+            account required.
           </p>
           <Link
             href="/"
             className="inline-flex items-center font-sans text-sm font-medium text-paper bg-accent px-6 py-3 rounded-full hover:bg-accent/90 transition-colors"
           >
-            Read today&apos;s Tamil Nadu briefing
+            Read today&apos;s briefing
           </Link>
         </div>
       </section>

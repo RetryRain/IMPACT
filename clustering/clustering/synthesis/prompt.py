@@ -9,37 +9,37 @@ from clustering.config import get_settings
 
 CANONICAL_SCOPES = frozenset({"India", "Tamil Nadu", "World"})
 
+CANONICAL_CATEGORIES = frozenset({
+    "politics",
+    "economy",
+    "crime",
+    "courts",
+    "tech",
+    "health",
+    "environment",
+    "sports",
+    "culture",
+    "international",
+})
+
 RELEVANCE_SYSTEM_PROMPT = """You are TNDecaf, a neutral news intelligence editor.
 
 Decide whether TNDecaf should publish a cluster of articles about the same real-world event. You receive article titles only.
 
 CORE PRINCIPLE
-TNDecaf publishes only events meaningfully relevant to people in Tamil Nadu—not everything in the news.
+TNDecaf publishes only genuine news events with material public-interest consequences—not everything in the news. Quality over volume. No engagement bait.
 
-Relevance types:
-- DIRECT IMPACT: affects TN residents, businesses, institutions, government, public services, safety, laws, jobs, prices, infrastructure, daily life.
-- INDIRECT MATERIAL IMPACT: outside TN but likely meaningful effect on TN via economy, trade, energy, employment, policy, security, supply chains.
+KEEP when the event has real consequences for people, institutions, markets, safety, law, or governance—in Tamil Nadu, India, or the world.
 
-Key question: "Would a person in Tamil Nadu reasonably benefit from knowing this because it could affect them, their community, money, work, government, or future?" If no → drop.
+KEEP examples:
+- Major policy, law, or court ruling
+- Significant economic or market development
+- Public health or safety event with wider concern
+- Infrastructure, energy, or transport disruption
+- Major international event with global consequences
+- TN state government, institutions, or public services
 
-SCOPE
-- Prioritize TN events and direct TN impact.
-- National/international OK when material TN impact exists.
-- Don't publish merely because important, dramatic, controversial, or widely reported.
-- Distance alone ≠ irrelevant; evaluate actual TN consequences.
-- Location in TN alone ≠ sufficient for keep.
-
-IMPACT TEST — KEEP when the event can reasonably affect a TN audience via: prices/inflation/fuel/food; jobs/employment/industries; trade/business; education/health policy; transport/infrastructure; energy/water/services; laws/tax/policy; public services; wider security; major governance changes; TN environmental policy; major external events with TN economic/political/security/social consequences.
-
-Examples:
-- Foreign war affecting oil, trade, Indian economy, TN businesses → keep
-- TN politician protest with no policy/citizen outcome → drop
-- Actor shocking statement without public-interest consequence → drop
-- Isolated murder/crime, no broader safety/policy/investigation → drop
-- Celebrity/personal incident → drop
-- Routine sports result → drop
-
-DROP categories: gossip/entertainment; pointless controversies; sports scores/highlights; ads/promos; opinion/editorial; listicles/lifestyle without news event; duplicate/non-news; isolated personal incidents; routine crime without wider concern; political noise without policy effect; no TN connection; sensational but low practical value.
+DROP categories: gossip/entertainment; celebrity/personal incidents; pointless controversies; routine sports scores/highlights; ads/promos; opinion/editorial; listicles/lifestyle without news event; duplicate/non-news; isolated personal crime without wider concern; political noise without policy effect; sensational but low practical value; speculation without factual basis.
 
 Don't keep for: shocking, controversial, emotional, violent, politically interesting, famous, trending, widely reported—without meaningful public relevance.
 
@@ -48,9 +48,8 @@ Don't prioritize clicks over usefulness.
 DECISION ORDER
 1. Genuine real-world event/development?
 2. Meaningful consequences for people/business/government/economy?
-3. Consequence connected to TN?
-4. Titles suggest enough to explain the event?
-If any of 1–3 is NO → drop.
+3. Titles suggest enough to explain the event?
+If any is NO → drop.
 
 Output JSON only: action "keep" or "drop"; drop_reason one word when drop, null when keep."""
 
@@ -66,25 +65,38 @@ SYNTHESIS
 - Source disagreements: neutral phrasing ("Sources disagree..."); don't name outlets in headline/summary/body.
 - No manufactured consensus; prefer verifiable facts; distinguish facts from allegations/claims.
 - No outside/general knowledge.
-- Don't infer TN impact unless supported by sources.
+- Don't infer TN relevance unless supported by sources.
 
 STYLE
-Neutral, factual, concise. Simple vocabulary. No sensationalism, clickbait, loaded language, editorializing. No favoring parties/governments/outlets. Don't exaggerate or hide disagreement. Explain what happened, why it matters, what's known. Make TN relevance clear when not obvious.
+Neutral, factual, concise. Simple vocabulary. No sensationalism, clickbait, loaded language, editorializing. No favoring parties/governments/outlets. Don't exaggerate or hide disagreement. Explain what happened, why it matters, what's known.
 
 SCOPE (assigned_scope is a hint)
 Return scope exactly one of: India, Tamil Nadu, World — where the event primarily belongs:
 - Tamil Nadu: TN geography, government, institutions, residents, local services
-- India: national event (even if affects TN)
-- World: international (even if affects India/TN)
+- India: national event
+- World: international event
 
-PRIORITY (1–100, TN impact only—not article/outlet count)
-- 80–100: direct large-scale urgent TN impact
-- 60–79: direct TN, narrower/less urgent
-- 40–59: indirect material TN consequences
-- 20–39: legitimate interest, limited practical effect
+CATEGORY
+Return exactly one primary category slug:
+- politics: elections, government, policy, diplomacy
+- economy: markets, trade, business, jobs, inflation
+- crime: crime with wider public concern
+- courts: court rulings, legal proceedings
+- tech: science, technology, research
+- health: public health, medicine, hospitals
+- environment: climate, pollution, natural disasters
+- sports: only major sporting events with public consequence (not routine scores)
+- culture: arts, heritage, education with public impact
+- international: cross-border events, foreign affairs
+
+PRIORITY (1–100, importance within assigned scope—not article/outlet count)
+- 80–100: major urgent event with wide consequences
+- 60–79: significant, narrower or less urgent
+- 40–59: legitimate public interest, moderate impact
+- 20–39: notable but limited practical effect
 - 1–19: barely passed relevance
 
-Output JSON only: action "rewrite" or "drop"; when rewrite: scope, priority, title, summary, body; when drop: drop_reason one word, others null."""
+Output JSON only: action "rewrite" or "drop"; when rewrite: scope, category, priority, title, summary, body; when drop: drop_reason one word, others null."""
 
 CLASSIFY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -125,6 +137,16 @@ SYNTHESIS_JSON_SCHEMA: dict[str, Any] = {
             ],
             "description": "Verified geographic scope when action is rewrite",
         },
+        "category": {
+            "anyOf": [
+                {"type": "null"},
+                {
+                    "type": "string",
+                    "enum": sorted(CANONICAL_CATEGORIES),
+                },
+            ],
+            "description": "Primary news category when action is rewrite",
+        },
         "priority": {
             "anyOf": [
                 {"type": "null"},
@@ -153,6 +175,7 @@ SYNTHESIS_JSON_SCHEMA: dict[str, Any] = {
         "action",
         "drop_reason",
         "scope",
+        "category",
         "priority",
         "title",
         "summary",
@@ -180,6 +203,27 @@ def normalize_scope(value: str | None) -> str | None:
     if lowered == "world":
         return "World"
     return stripped
+
+
+def normalize_category(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = str(value).strip().lower().replace(" ", "_").replace("-", "_")
+    if not stripped:
+        return None
+    aliases = {
+        "science": "tech",
+        "science_and_tech": "tech",
+        "sci_tech": "tech",
+        "law": "courts",
+        "legal": "courts",
+        "world": "international",
+        "foreign": "international",
+    }
+    normalized = aliases.get(stripped, stripped)
+    if normalized in CANONICAL_CATEGORIES:
+        return normalized
+    return stripped if stripped in CANONICAL_CATEGORIES else None
 
 
 def _coerce_action(data: dict[str, Any], *, keep_value: str) -> None:
@@ -235,12 +279,17 @@ def coerce_synthesis_payload(data: dict[str, Any]) -> dict[str, Any]:
         ("article_body", "body"),
         ("priority_points", "priority"),
         ("priority_score", "priority"),
+        ("primary_category", "category"),
+        ("news_category", "category"),
     ):
         if alt_key in normalized and canonical_key not in normalized:
             normalized[canonical_key] = normalized.pop(alt_key)
 
     if "scope" in normalized:
         normalized["scope"] = normalize_scope(normalized.get("scope"))
+
+    if "category" in normalized:
+        normalized["category"] = normalize_category(normalized.get("category"))
 
     priority = normalized.get("priority")
     if priority == "" or priority is None:
@@ -253,6 +302,7 @@ def coerce_synthesis_payload(data: dict[str, Any]) -> dict[str, Any]:
         normalized["summary"] = None
         normalized["body"] = None
         normalized["scope"] = None
+        normalized["category"] = None
         normalized["priority"] = None
 
     return normalized
@@ -285,6 +335,7 @@ class SynthesisResult(BaseModel):
     action: Literal["rewrite", "drop"]
     drop_reason: str | None = None
     scope: Literal["India", "Tamil Nadu", "World"] | None = None
+    category: str | None = None
     priority: int | None = Field(default=None, ge=1, le=100)
     title: str | None = None
     summary: str | None = None
@@ -300,6 +351,7 @@ class SynthesisResult(BaseModel):
                     ("summary", self.summary),
                     ("body", self.body),
                     ("scope", self.scope),
+                    ("category", self.category),
                     ("priority", self.priority),
                 )
                 if value is None or (
@@ -315,12 +367,21 @@ class SynthesisResult(BaseModel):
                     f"rewrite requires scope to be one of: "
                     f"{', '.join(sorted(CANONICAL_SCOPES))}"
                 )
+            if self.category not in CANONICAL_CATEGORIES:
+                raise ValueError(
+                    f"rewrite requires category to be one of: "
+                    f"{', '.join(sorted(CANONICAL_CATEGORIES))}"
+                )
         elif self.action == "drop":
             if not (self.drop_reason or "").strip():
                 raise ValueError("drop requires a non-empty drop_reason")
-            if self.scope is not None or self.priority is not None:
+            if (
+                self.scope is not None
+                or self.category is not None
+                or self.priority is not None
+            ):
                 raise ValueError(
-                    "drop requires scope and priority to be null"
+                    "drop requires scope, category, and priority to be null"
                 )
         return self
 
@@ -358,7 +419,8 @@ def compact_rewrite_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def build_classify_user_message(payload: dict[str, Any]) -> str:
     compact = compact_classify_payload(payload)
     return (
-        "Review these article titles for Tamil Nadu relevance. Respond with JSON only.\n"
+        "Review these article titles for public-interest news quality. "
+        "Respond with JSON only.\n"
         f"{_compact_json(compact)}"
     )
 

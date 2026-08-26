@@ -4,6 +4,7 @@ import { FeedDateNav } from "@/components/FeedDateNav";
 import { FadingIntro } from "@/components/FadingIntro";
 import { FeedList } from "@/components/FeedList";
 import { Pagination } from "@/components/Pagination";
+import { parseCategorySearchParams } from "@/lib/categories";
 import { parseFeedDateParam } from "@/lib/feed-dates";
 import { parseFeedSortParam } from "@/lib/feed-sort";
 import { getFeedStories, getFeedStoryDates } from "@/lib/queries";
@@ -20,24 +21,24 @@ export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ scope: string }>;
-  searchParams: Promise<{ page?: string; date?: string; sort?: string }>;
+  searchParams: Promise<{ page?: string; date?: string; sort?: string; category?: string | string[] }>;
 };
 
 const SCOPE_META: Record<ScopePath, { title: string; description: string }> = {
   "tamil-nadu": {
     title: "Tamil Nadu news",
     description:
-      "Tamil Nadu news for local readers from TNDecaf. State stories on work, money, safety, and public services.",
+      "Tamil Nadu news from TNDecaf. State stories on government, services, and daily life.",
   },
   india: {
-    title: "India news for Tamil Nadu readers",
+    title: "India news",
     description:
-      "National news from TNDecaf when it changes life in Tamil Nadu. No engagement bait, no filler.",
+      "National news from TNDecaf. Quality India coverage without engagement bait or filler.",
   },
   world: {
-    title: "World news for Tamil Nadu readers",
+    title: "World news",
     description:
-      "Global news from TNDecaf when it reaches Tamil Nadu. Short original briefs, free to read.",
+      "Global news from TNDecaf. International stories that matter, free to read.",
   },
 };
 
@@ -66,18 +67,21 @@ export default async function ScopeFeedPage({ params, searchParams }: PageProps)
   const page = Math.max(1, Number(query.page ?? "1") || 1);
   const selectedDate = parseFeedDateParam(query.date);
   const selectedSort = parseFeedSortParam(query.sort);
+  const categories = parseCategorySearchParams(query);
   const scopePath = scope as ScopePath;
   const [feed, dates] = await Promise.all([
-    getFeedStories(scopePath, page, selectedDate, selectedSort),
-    getFeedStoryDates(scopePath),
+    getFeedStories(scopePath, page, selectedDate, selectedSort, categories),
+    getFeedStoryDates(scopePath, categories),
   ]);
   const label = SCOPE_LABELS[scope];
+  const categoryQuery =
+    categories.length > 0 ? { category: categories } : undefined;
   const paginationQuery =
     selectedSort === "latest"
-      ? { sort: "latest" as const }
+      ? { sort: "latest" as const, ...categoryQuery }
       : selectedDate
-        ? { date: selectedDate }
-        : undefined;
+        ? { date: selectedDate, ...categoryQuery }
+        : categoryQuery;
 
   return (
     <div>

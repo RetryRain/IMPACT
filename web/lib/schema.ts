@@ -7,6 +7,7 @@ export const synthesizedStories = pgTable("synthesized_stories", {
   slug: text("slug").notNull().unique(),
   summary: text("summary"),
   body: text("body"),
+  category: text("category"),
   url: text("url").notNull(),
   source: text("source"),
   author: text("author"),

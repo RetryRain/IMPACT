@@ -1,14 +1,8 @@
-import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { ArticleBackButton } from "@/components/ArticleBackButton";
-import { ArticleBody } from "@/components/ArticleBody";
-import { FeedbackButton } from "@/components/FeedbackButton";
-import { PublisherLogos } from "@/components/PublisherLogos";
+import { ArticleView } from "@/components/ArticleView";
 import { MarkStoryRead } from "@/components/MarkStoryRead";
 import { NewsArticleJsonLd } from "@/components/NewsArticleJsonLd";
-import { ShareStoryButton } from "@/components/ShareStoryButton";
-import { StoryPublishedDate } from "@/components/StoryPublishedDate";
 import { storyKeywords } from "@/lib/keywords";
 import {
   getStoryById,
@@ -19,7 +13,6 @@ import {
   isScopePath,
   scopeToPath,
   storyPath,
-  scopeChipClass,
   type ScopePath,
 } from "@/lib/scope";
 import { resolveStoryPublishers } from "@/lib/publishers";
@@ -114,72 +107,27 @@ export default async function ArticlePage({ params }: PageProps) {
     <>
       <NewsArticleJsonLd story={story} />
       <MarkStoryRead id={story.id} slug={story.slug} />
-      <article className="max-w-article mx-auto">
-        <div className="mb-6">
-          <ArticleBackButton scopePath={scope} />
-        </div>
-
-        <header className="mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-muted mb-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={scopeChipClass(story.scope)}>
-                {story.scope}
-              </span>
-              <StoryPublishedDate date={publishedAt} />
-            </div>
-            <ShareStoryButton title={story.title} url={pageUrl} />
-          </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
-            {story.title}
-          </h1>
-          {story.summary && (
-            <p className="mt-4 font-sans text-lg text-muted leading-relaxed">
-              {story.summary}
-            </p>
-          )}
-        </header>
-
-        {story.image && (
-          <div className="relative aspect-[16/9] rounded-lg overflow-hidden mb-8 bg-border">
-            <Image
-              src={story.image}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 672px"
-              priority
-            />
-          </div>
-        )}
-
-        {story.body && <ArticleBody body={story.body} />}
-
-        {story.tags && story.tags.length > 0 && (
-          <ul className="sr-only">
-            {story.tags.map((tag) => (
-              <li key={tag}>{tag}</li>
-            ))}
-          </ul>
-        )}
-
-        {publishers.length > 0 && (
-          <section className="mt-10 border-t border-border pt-6">
-            <p className="text-xs font-sans uppercase tracking-wide text-muted mb-3">
-              From
-            </p>
-            <PublisherLogos
-              publishers={publishers}
-              linked
-              className="justify-start"
-            />
-          </section>
-        )}
-
-        <div className="mt-10 border-t border-border pt-6 flex flex-wrap items-center gap-4">
-          <ArticleBackButton scopePath={scope} />
-          <FeedbackButton pageUrl={pageUrl} />
-        </div>
-      </article>
+      <ArticleView
+        story={{
+          id: story.id,
+          slug: story.slug,
+          scope: story.scope,
+          category: story.category,
+          title: story.title,
+          summary: story.summary,
+          body: story.body,
+          image: story.image,
+          tags: story.tags,
+          publishedAt,
+          pageUrl,
+          publishers,
+        }}
+        scopePath={scope as ScopePath}
+        slug={slug}
+        publishers={publishers}
+        pageUrl={pageUrl}
+        publishedAt={publishedAt}
+      />
     </>
   );
 }
