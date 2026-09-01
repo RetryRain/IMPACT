@@ -11,7 +11,7 @@ import {
 import { storyPath, type ScopePath } from "@/lib/scope";
 import { markStoryRead } from "@/lib/visited-store";
 
-const PRELOAD_RADIUS = 2;
+const PRELOAD_RADIUS = 1;
 const storyCache = new Map<string, CachedStory>();
 
 type CachedStory = ArticlePaneData & { scopePath: ScopePath };
