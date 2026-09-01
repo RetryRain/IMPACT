@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Lora } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SerwistProvider } from "@serwist/next/react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <AllReadEgg />
           </FeedReadProgressProvider>
         </SerwistProvider>
+        <Analytics />
       </body>
     </html>
   );
