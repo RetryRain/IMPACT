@@ -56,15 +56,12 @@ export default function PrivacyPage() {
 
       <section className="space-y-3">
         <h2 className="font-serif text-2xl font-bold text-ink">
-          Analytics
+          No analytics or ad tracking
         </h2>
         <p>
-          We use{" "}
-          <strong className="text-ink">Vercel Web Analytics</strong> to see
-          aggregate page views and visitor counts so we can understand how the
-          site is used. It does not use cookies for ad tracking and does not
-          build a personal profile of you. We don&apos;t run ad pixels or
-          behavioral tracking across other sites.
+          We don&apos;t run third-party analytics, ad pixels, or behavioral
+          tracking on {SITE_NAME}. No cookie banner because we&apos;re not
+          trying to follow you around the web.
         </p>
       </section>
 
