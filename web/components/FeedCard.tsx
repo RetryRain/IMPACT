@@ -46,7 +46,9 @@ export function FeedCard({ story }: { story: Story }) {
               alt=""
               fill
               className="object-cover"
-              sizes="200px"
+              // Article images are immutable publisher URLs; bypass the Vercel
+              // optimizer to avoid per-URL image-transformation usage spikes.
+              unoptimized
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center px-4">

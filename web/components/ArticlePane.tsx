@@ -176,7 +176,9 @@ export function ArticlePane({
             alt=""
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 672px"
+            // Article images are immutable publisher URLs; bypass the Vercel
+            // optimizer to avoid per-URL image-transformation usage spikes.
+            unoptimized
             priority
           />
         </div>
