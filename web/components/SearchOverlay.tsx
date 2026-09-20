@@ -151,9 +151,9 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
             {!loading &&
               results.map(({ item }) => {
                 const scopePath = scopeToPath(item.scope);
-                const href = scopePath
-                  ? storyPath(scopePath, item.slug)
-                  : `/s/${item.id}`;
+                if (!scopePath || !item.slug) return null;
+
+                const href = storyPath(scopePath, item.slug);
                 return (
                   <Link
                     key={item.id}

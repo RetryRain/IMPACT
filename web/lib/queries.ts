@@ -1,4 +1,13 @@
-import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { getDb } from "./db";
 import { IST_TIMEZONE } from "./feed-dates";
 import type { FeedSort } from "./feed-sort";
@@ -8,7 +17,12 @@ import {
   type Story,
   type StoryRedirect,
 } from "./schema";
-import { pathToScopeLabel, scopeToPath, type ScopePath } from "./scope";
+import {
+  pathToScopeLabel,
+  scopeToPath,
+  SCOPE_LABELS,
+  type ScopePath,
+} from "./scope";
 
 export const FEED_PAGE_SIZE = 20;
 export const FEED_DEFAULT_HOURS = 24;
@@ -40,6 +54,11 @@ function scopeCondition(scopePath?: ScopePath): SQL | undefined {
   return eq(synthesizedStories.scope, label);
 }
 
+const validScopeCondition = inArray(
+  synthesizedStories.scope,
+  Object.values(SCOPE_LABELS),
+);
+
 function feedTimeCondition(date?: string | null): SQL {
   if (date) {
     return sql`(timezone(${IST_TIMEZONE}, ${effectiveAt}))::date = ${date}::date`;
@@ -54,6 +73,7 @@ function feedConditions(
 ) {
   const conditions: (SQL | undefined)[] = [
     isNull(synthesizedStories.canonicalStoryId),
+    validScopeCondition,
     scopeCondition(scopePath),
     feedTimeCondition(date),
     categories && categories.length > 0
@@ -83,10 +103,7 @@ export async function getFeedStories(
       .orderBy(...feedOrder(sort))
       .limit(pageSize)
       .offset(offset),
-    db
-      .select({ count: count() })
-      .from(synthesizedStories)
-      .where(whereClause),
+    db.select({ count: count() }).from(synthesizedStories).where(whereClause),
   ]);
 
   const total = Number(totalRow[0]?.count ?? 0);
@@ -106,6 +123,7 @@ export async function getFeedStoryDates(
   const db = getDb();
   const conditions: (SQL | undefined)[] = [
     isNull(synthesizedStories.canonicalStoryId),
+    validScopeCondition,
     scopeCondition(scopePath),
     categories && categories.length > 0
       ? inArray(synthesizedStories.category, categories)
@@ -140,7 +158,10 @@ export async function getStoryBySlug(
     .select()
     .from(synthesizedStories)
     .where(
-      and(eq(synthesizedStories.slug, slug), eq(synthesizedStories.scope, label)),
+      and(
+        eq(synthesizedStories.slug, slug),
+        eq(synthesizedStories.scope, label),
+      ),
     )
     .limit(1);
 
@@ -168,9 +189,7 @@ export async function getStoryRedirectBySlug(
   const rows = await db
     .select()
     .from(storyRedirects)
-    .where(
-      and(eq(storyRedirects.slug, slug), eq(storyRedirects.scope, label)),
-    )
+    .where(and(eq(storyRedirects.slug, slug), eq(storyRedirects.scope, label)))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -211,14 +230,16 @@ export async function getLatestStories(limit = 50): Promise<Story[]> {
   return db
     .select()
     .from(synthesizedStories)
-    .where(isNull(synthesizedStories.canonicalStoryId))
+    .where(
+      and(isNull(synthesizedStories.canonicalStoryId), validScopeCondition),
+    )
     .orderBy(...feedOrder())
     .limit(limit);
 }
 
-export async function getAllStoryPaths(limit = 200): Promise<
-  Array<{ scope: ScopePath; slug: string }>
-> {
+export async function getAllStoryPaths(
+  limit = 200,
+): Promise<Array<{ scope: ScopePath; slug: string }>> {
   const stories = await getLatestStories(limit);
   const paths: Array<{ scope: ScopePath; slug: string }> = [];
   for (const story of stories) {
@@ -280,7 +301,9 @@ export async function getStorySearchIndex(): Promise<StorySearchIndexItem[]> {
       publishedAt: synthesizedStories.publishedAt,
     })
     .from(synthesizedStories)
-    .where(isNull(synthesizedStories.canonicalStoryId))
+    .where(
+      and(isNull(synthesizedStories.canonicalStoryId), validScopeCondition),
+    )
     .orderBy(...feedOrder());
 
   return rows.map((row) => ({

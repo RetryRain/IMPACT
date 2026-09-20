@@ -9,9 +9,9 @@ import { categoryChipClass, categoryLabel } from "@/lib/categories";
 
 export function FeedCard({ story }: { story: Story }) {
   const scopePath = scopeToPath(story.scope);
-  const href = scopePath
-    ? storyPath(scopePath, story.slug)
-    : `/s/${story.id}`;
+  if (!scopePath || !story.slug) return null;
+
+  const href = storyPath(scopePath, story.slug);
 
   const category = categoryLabel(story.category);
 
@@ -20,9 +20,7 @@ export function FeedCard({ story }: { story: Story }) {
       <FeedCardLink href={href} storyId={story.id}>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-muted mb-2">
-            <span className={scopeChipClass(story.scope)}>
-              {story.scope}
-            </span>
+            <span className={scopeChipClass(story.scope)}>{story.scope}</span>
             {category && story.category && (
               <span className={categoryChipClass(story.category)}>
                 {category}
