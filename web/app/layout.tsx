@@ -71,6 +71,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <FeedReadProgressProvider>
             <SiteJsonLd />
             <SiteHeader />
+            <aside
+              className="border-b border-accent/20 bg-accent-soft px-4 py-3 text-center text-sm text-accent-ink"
+              role="status"
+            >
+              <p className="mx-auto max-w-5xl">
+                <span className="font-semibold">TNDecaf has permanently sunset.</span>{" "}
+                We will no longer publish new briefings, but the stories collected
+                so far remain here to read. Thank you for being part of this
+                project.
+              </p>
+            </aside>
             <InstallBanner />
             <main className="mx-auto max-w-5xl px-4 py-8 pb-tab-bar">{children}</main>
             <SiteFooter />
